@@ -1,0 +1,67 @@
+# ==============================================================================
+# Git Ignore Configuration for Modular Voice Studio
+# ==============================================================================
+
+# Build Output Directories & Artifacts
+build/
+bin/
+out/
+target/
+ModularAudioOS_artefacts/
+ModularVoiceStudio_artefacts/
+*.dir/
+
+# Compiled Binaries & Bundles
+*.exe
+*.dll
+*.vst3
+*.lib
+*.exp
+*.pdb
+*.ilk
+*.obj
+*.res
+
+# Visual Studio & MSBuild Artifacts
+.vs/
+*.VC.db
+*.opendb
+*.vcxproj.user
+*.vcxproj.filters.user
+*.suo
+*.sln.docstates
+*.user
+*.userosv
+*.tlog
+*.log
+*.cache
+*.ipch
+
+# CMake Generated Files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+*.cmake
+!CMakeLists.txt
+!Source/**/CMakeLists.txt
+!JUCE/**/CMakeLists.txt
+
+# OS Generated Files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+
+# Intermediate IDE Files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.bak
+
+# Optional Proprietary SDK paths
+VST_SDK/
+vstsdk2.4/
