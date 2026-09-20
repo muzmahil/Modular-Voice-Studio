@@ -72,16 +72,13 @@ target_compile_definitions(ModularVoiceStudio PUBLIC
     JUCE_DISPLAY_SPLASH_SCREEN=0
 )
 
-# 1. Dosyanın GERÇEK yolunu tanımlıyoruz
 set(FONT_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Source/Font/InterMedium.ttf")
 set(ICON_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Source/Assets/icon.png")
 
-# 2. JUCE çökmeden önce CMake dosyayı bulabildi mi diye kontrol ediyoruz
 if (NOT EXISTS "${FONT_PATH}")
     message(FATAL_ERROR "DAYI DUR! Font dosyasi bulunamadi. Aranan yol: ${FONT_PATH}")
 endif()
 
-# 3. BinaryData içine Font ve Logo ikonunu ekliyoruz
 set(BINARY_DATA_SOURCES "${FONT_PATH}")
 if (EXISTS "${ICON_PATH}")
     list(APPEND BINARY_DATA_SOURCES "${ICON_PATH}")
