@@ -50,11 +50,12 @@ public:
     {
         for (int b = 0; b < numBands; ++b)
         {
-            typeParam[b]    = apvts.getRawParameterValue ("band_" + juce::String (b + 1) + "_type");
-            freqParam[b]    = apvts.getRawParameterValue ("band_" + juce::String (b + 1) + "_freq");
-            gainParam[b]    = apvts.getRawParameterValue ("band_" + juce::String (b + 1) + "_gain");
-            qParam[b]       = apvts.getRawParameterValue ("band_" + juce::String (b + 1) + "_q");
-            enabledParam[b] = apvts.getRawParameterValue ("band_" + juce::String (b + 1) + "_enabled");
+            const auto& cfg = getBandConfig (b);
+            typeParam[b]    = getModuleParam ("band_" + juce::String (b + 1) + "_type", (float) cfg.defaultType);
+            freqParam[b]    = getModuleParam ("band_" + juce::String (b + 1) + "_freq", cfg.defaultFreq);
+            gainParam[b]    = getModuleParam ("band_" + juce::String (b + 1) + "_gain", cfg.defaultGain);
+            qParam[b]       = getModuleParam ("band_" + juce::String (b + 1) + "_q", cfg.defaultQ);
+            enabledParam[b] = getModuleParam ("band_" + juce::String (b + 1) + "_enabled", 1.0f);
         }
 
         for (int i = 0; i < numSpectrumBins; ++i)
@@ -78,7 +79,7 @@ public:
         // Update filter coefficients for all 7 bands
         for (int b = 0; b < numBands; ++b)
         {
-            bool enabled = enabledParam[b]->load() > 0.5f;
+            bool enabled = enabledParam[b].get (1.0f) > 0.5f;
             if (! enabled)
             {
                 // Passthrough
@@ -87,10 +88,10 @@ public:
                 continue;
             }
 
-            int type   = (int) typeParam[b]->load();
-            float freq = juce::jlimit (20.0f, 20000.0f, freqParam[b]->load());
-            float gain = juce::jlimit (-18.0f, 18.0f, gainParam[b]->load());
-            float q    = juce::jlimit (0.1f, 10.0f, qParam[b]->load());
+            int type   = (int) typeParam[b].get (0.0f);
+            float freq = juce::jlimit (20.0f, 20000.0f, freqParam[b].get (1000.0f));
+            float gain = juce::jlimit (-18.0f, 18.0f, gainParam[b].get (0.0f));
+            float q    = juce::jlimit (0.1f, 10.0f, qParam[b].get (1.0f));
 
             calculateCoefficients (b, type, freq, gain, q);
         }
@@ -152,13 +153,13 @@ public:
         float totalDb = 0.0f;
         for (int b = 0; b < numBands; ++b)
         {
-            bool enabled = enabledParam[b] ? (enabledParam[b]->load() > 0.5f) : true;
+            bool enabled = enabledParam[b].get (1.0f) > 0.5f;
             if (! enabled) continue;
 
-            int type   = typeParam[b] ? (int) typeParam[b]->load() : 0;
-            float f0   = freqParam[b] ? freqParam[b]->load() : 1000.0f;
-            float gain = gainParam[b] ? gainParam[b]->load() : 0.0f;
-            float q    = qParam[b]    ? qParam[b]->load()    : 1.0f;
+            int type   = (int) typeParam[b].get (0.0f);
+            float f0   = freqParam[b].get (1000.0f);
+            float gain = gainParam[b].get (0.0f);
+            float q    = qParam[b].get (1.0f);
 
             totalDb += getBandResponseDb (type, f0, gain, q, freq);
         }
@@ -214,20 +215,20 @@ public:
         return liveSpectrum[juce::jlimit (0, numSpectrumBins - 1, idx)].load (std::memory_order_relaxed);
     }
 
-    float getBandFreq (int b) const    { return freqParam[b] ? freqParam[b]->load() : 1000.0f; }
-    void  setBandFreq (int b, float f) { if (auto* p = apvts.getParameter ("band_" + juce::String (b + 1) + "_freq")) p->setValueNotifyingHost (p->convertTo0to1 (f)); }
+    float getBandFreq (int b) const    { return (b >= 0 && b < numBands) ? freqParam[b].get (1000.0f) : 1000.0f; }
+    void  setBandFreq (int b, float f) { if (b >= 0 && b < numBands) freqParam[b].set (f); }
 
-    float getBandGain (int b) const    { return gainParam[b] ? gainParam[b]->load() : 0.0f; }
-    void  setBandGain (int b, float g) { if (auto* p = apvts.getParameter ("band_" + juce::String (b + 1) + "_gain")) p->setValueNotifyingHost (p->convertTo0to1 (g)); }
+    float getBandGain (int b) const    { return (b >= 0 && b < numBands) ? gainParam[b].get (0.0f) : 0.0f; }
+    void  setBandGain (int b, float g) { if (b >= 0 && b < numBands) gainParam[b].set (g); }
 
-    float getBandQ (int b) const       { return qParam[b] ? qParam[b]->load() : 1.0f; }
-    void  setBandQ (int b, float q)    { if (auto* p = apvts.getParameter ("band_" + juce::String (b + 1) + "_q")) p->setValueNotifyingHost (p->convertTo0to1 (q)); }
+    float getBandQ (int b) const       { return (b >= 0 && b < numBands) ? qParam[b].get (1.0f) : 1.0f; }
+    void  setBandQ (int b, float q)    { if (b >= 0 && b < numBands) qParam[b].set (q); }
 
-    int   getBandType (int b) const    { return typeParam[b] ? (int) typeParam[b]->load() : 0; }
-    void  setBandType (int b, int t)   { if (auto* p = apvts.getParameter ("band_" + juce::String (b + 1) + "_type")) p->setValueNotifyingHost (p->convertTo0to1 ((float) t)); }
+    int   getBandType (int b) const    { return (b >= 0 && b < numBands) ? (int) typeParam[b].get (0.0f) : 0; }
+    void  setBandType (int b, int t)   { if (b >= 0 && b < numBands) typeParam[b].set ((float) t); }
 
-    bool  isBandEnabled (int b) const  { return enabledParam[b] ? (enabledParam[b]->load() > 0.5f) : true; }
-    void  setBandEnabled (int b, bool e){ if (auto* p = apvts.getParameter ("band_" + juce::String (b + 1) + "_enabled")) p->setValueNotifyingHost (e ? 1.0f : 0.0f); }
+    bool  isBandEnabled (int b) const  { return (b >= 0 && b < numBands) ? (enabledParam[b].get (1.0f) > 0.5f) : true; }
+    void  setBandEnabled (int b, bool e){ if (b >= 0 && b < numBands) enabledParam[b].set (e ? 1.0f : 0.0f); }
 
 private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createLayout()
@@ -348,11 +349,11 @@ private:
         }
     }
 
-    std::atomic<float>* typeParam[numBands]    = {};
-    std::atomic<float>* freqParam[numBands]    = {};
-    std::atomic<float>* gainParam[numBands]    = {};
-    std::atomic<float>* qParam[numBands]       = {};
-    std::atomic<float>* enabledParam[numBands] = {};
+    ParamRef typeParam[numBands];
+    ParamRef freqParam[numBands];
+    ParamRef gainParam[numBands];
+    ParamRef qParam[numBands];
+    ParamRef enabledParam[numBands];
 
     double sampleRate = 44100.0;
     float b0[numBands] = {}, b1[numBands] = {}, b2[numBands] = {};

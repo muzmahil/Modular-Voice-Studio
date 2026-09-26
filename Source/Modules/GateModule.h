@@ -20,10 +20,10 @@ public:
     GateModule()
         : ModuleProcessor ("Gate", createLayout())
     {
-        thresholdParam = apvts.getRawParameterValue ("threshold");
-        releaseParam   = apvts.getRawParameterValue ("release");
-        rangeParam     = apvts.getRawParameterValue ("range");
-        attackParam    = apvts.getRawParameterValue ("attack");
+        thresholdParam = getModuleParam ("threshold", -42.0f);
+        releaseParam   = getModuleParam ("release", 120.0f);
+        rangeParam     = getModuleParam ("range", -40.0f);
+        attackParam    = getModuleParam ("attack", 2.0f);
 
         for (int i = 0; i < historyLength; ++i)
             history[i] = { -80.0f, 1.0f, false };
@@ -49,13 +49,13 @@ public:
         const int numSamples  = buffer.getNumSamples();
         if (numChannels == 0 || numSamples == 0) return;
 
-        float threshDb = thresholdParam->load();
+        float threshDb = thresholdParam.get (-42.0f);
         float threshLinear = juce::Decibels::decibelsToGain (threshDb, -90.0f);
         float hysteresisLinear = juce::Decibels::decibelsToGain (threshDb - 2.5f, -90.0f);
 
-        float relMs = juce::jmax (10.0f, releaseParam->load());
-        float attMs = juce::jmax (0.5f, attackParam->load());
-        float rangeDb = rangeParam->load();
+        float relMs = juce::jmax (10.0f, releaseParam.get (120.0f));
+        float attMs = juce::jmax (0.5f, attackParam.get (2.0f));
+        float rangeDb = rangeParam.get (-40.0f);
         float floorGain = juce::Decibels::decibelsToGain (rangeDb, -90.0f);
 
         float attCoeff = std::exp (-1.0f / (float) ((attMs * 0.001f) * sampleRate));
@@ -141,7 +141,7 @@ public:
 
     float getLiveGainReduction() const { return liveGainReduction.load (std::memory_order_relaxed); }
     bool isGateOpen() const { return liveGateState.load (std::memory_order_relaxed) > 0.5f; }
-    float getThresholdDb() const { return thresholdParam ? thresholdParam->load() : -42.0f; }
+    float getThresholdDb() const { return thresholdParam.get (-42.0f); }
     float getInputPeak() const { return liveInputPeak.load (std::memory_order_relaxed); }
     float getOutputPeak() const { return liveOutputPeak.load (std::memory_order_relaxed); }
 
@@ -179,10 +179,10 @@ private:
         };
     }
 
-    std::atomic<float>* thresholdParam = nullptr;
-    std::atomic<float>* releaseParam   = nullptr;
-    std::atomic<float>* rangeParam     = nullptr;
-    std::atomic<float>* attackParam    = nullptr;
+    ParamRef thresholdParam;
+    ParamRef releaseParam;
+    ParamRef rangeParam;
+    ParamRef attackParam;
 
     double sampleRate = 44100.0;
     float currentGain = 1.0f;

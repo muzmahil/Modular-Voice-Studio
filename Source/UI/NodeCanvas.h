@@ -71,9 +71,8 @@ public:
     bool isShowCableGlow() const { return showCableGlow; }
     static constexpr int snapGridSize = 24;
 
-    // Real (not decorative) level readouts, used by NodeComponent for the Audio In/Out meters.
-    float getInputLevel() const  { return processor.inputLevel.load(); }
-    float getOutputLevel() const { return processor.outputLevel.load(); }
+    float getInputLevel() const  { return processor.getActiveChannel().inLevel.load(); }
+    float getOutputLevel() const { return processor.getActiveChannel().outLevel.load(); }
 
     /** Repaints just the node components (cheap — each is ~150x74) so their live
         parameter/level indicators animate without redrawing the whole 4000x4000 canvas.

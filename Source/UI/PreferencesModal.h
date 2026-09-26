@@ -26,7 +26,7 @@ public:
     void resized() override;
     void mouseDown (const juce::MouseEvent& e) override;
 
-    enum class Tab { Settings, Shortcuts, About };
+    enum class Tab { AudioDevice, Settings, Shortcuts, About };
     void setTab (Tab newTab);
 
 private:
@@ -36,16 +36,26 @@ private:
     std::function<void()> onSettingsChangedCallback;
     std::function<void()> onCloseCallback;
 
-    Tab currentTab = Tab::Settings;
+    Tab currentTab = Tab::AudioDevice;
 
     // Window card bounds
     juce::Rectangle<int> cardBounds;
 
     // Top Header Buttons
-    juce::TextButton settingsTabBtn  { "Settings" };
-    juce::TextButton shortcutsTabBtn { "Shortcuts" };
-    juce::TextButton aboutTabBtn     { "About" };
-    juce::TextButton closeBtn        { "Close" };
+    juce::TextButton audioDeviceTabBtn { "Audio Hardware" };
+    juce::TextButton settingsTabBtn    { "Settings" };
+    juce::TextButton shortcutsTabBtn   { "Shortcuts" };
+    juce::TextButton aboutTabBtn       { "About" };
+    juce::TextButton closeBtn          { "Close" };
+
+    // --- Audio Engine & Master Output Tab Controls ---
+    juce::ComboBox   driverTypeBox;
+    juce::ComboBox   outputDeviceBox;
+    juce::ComboBox   sampleRateBox;
+    juce::ComboBox   bufferSizeBox;
+    juce::TextButton asioControlPanelBtn { "Launch ASIO Driver Panel" };
+    juce::Label      engineStatusLabel;
+    juce::Label      dawNoticeLabel;
 
     // --- Settings Tab Controls ---
     juce::ComboBox   languageSelector;
@@ -65,6 +75,8 @@ private:
     std::unique_ptr<juce::FileChooser> fileChooser;
 
     void updatePathDisplay();
+    void updateAudioEngineControls();
+    void drawAudioHardwareTab (juce::Graphics& g, juce::Rectangle<int> contentArea);
     void drawSettingsTab (juce::Graphics& g, juce::Rectangle<int> contentArea);
     void drawShortcutsTab (juce::Graphics& g, juce::Rectangle<int> contentArea);
     void drawAboutTab (juce::Graphics& g, juce::Rectangle<int> contentArea);

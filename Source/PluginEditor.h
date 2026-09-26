@@ -12,6 +12,7 @@
 #include "UI/ModuleInfoCard.h"
 #include "UITheme.h"
 #include "Localization.h"
+#include "Mixer/StandaloneMixerComponent.h"
 
 class PluginEditor : public juce::AudioProcessorEditor, 
                      public juce::DragAndDropContainer, 
@@ -28,6 +29,8 @@ public:
     void localizationChanged() override;
     void changeListenerCallback (juce::ChangeBroadcaster*) override;
     bool keyPressed (const juce::KeyPress& key) override;
+    void parentHierarchyChanged() override;
+    void refreshCanvasView();
 
 private:
     PluginProcessor& processor;
@@ -155,6 +158,14 @@ private:
 
     juce::Slider macroKnobs[4];
     std::unique_ptr<juce::SliderParameterAttachment> macroAttachments[4];
+
+    // Standalone Calm Mixer
+    bool isStandaloneMode = false;
+    bool isStandaloneMixerViewActive = false;
+    std::unique_ptr<StandaloneMixerComponent> standaloneMixer;
+    juce::TextButton backToMixerBtn { "← Mixer" };
+    juce::Label dspChainTitleLabel;
+    void updateDspChainTitle();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PluginEditor)
 };

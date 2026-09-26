@@ -23,8 +23,8 @@ public:
                                .withOutput ("High Output", juce::AudioChannelSet::stereo(), true),
                            createLayout())
     {
-        lowMidFreqParam  = apvts.getRawParameterValue ("lowMidFreq");
-        midHighFreqParam = apvts.getRawParameterValue ("midHighFreq");
+        lowMidFreqParam  = getRawParam ("lowMidFreq");
+        midHighFreqParam = getRawParam ("midHighFreq");
     }
 
     ~CrossoverSplitterModule() override = default;

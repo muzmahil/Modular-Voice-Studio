@@ -1,0 +1,288 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="ModularVoiceStudio.Installer.MainWindow"
+        Title="Modular Voice Studio Setup"
+        Width="740" Height="490"
+        CanResize="False"
+        WindowStartupLocation="CenterScreen"
+        SystemDecorations="None"
+        Background="#F5F5F5">
+
+    <Border BorderBrush="#CCCCCC" BorderThickness="1" CornerRadius="8" ClipToBounds="True">
+        <Grid RowDefinitions="52,*">
+            <!-- 1. Top Bar -->
+            <Grid Grid.Row="0" Background="#000000" ColumnDefinitions="Auto,*,Auto" PointerPressed="OnTopBarPointerPressed">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0" Spacing="10">
+                    <Image Width="24" Height="24" Source="avares://ModularVoiceStudio_Setup/Assets/logo.png" VerticalAlignment="Center" />
+                    <TextBlock Text="Modular Voice Studio" FontWeight="Bold" FontSize="16" Foreground="#FFFFFF" VerticalAlignment="Center" />
+                    <TextBlock x:Name="TxtHeaderSubtitle" Text="SETUP" FontSize="11" FontWeight="SemiBold" Foreground="#888888" VerticalAlignment="Center" Margin="8,0,0,0" LetterSpacing="1" />
+                </StackPanel>
+
+                <!-- Language Toggle + Window Controls -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0" Spacing="8">
+                    <Button x:Name="BtnLangToggle" Click="OnLangToggleClick" Height="28" Padding="10,0" Background="#1A1A1A" BorderBrush="#333333" BorderThickness="1" CornerRadius="14" Cursor="Hand">
+                        <TextBlock x:Name="TxtLangToggle" Text="TR / EN" Foreground="#FFFFFF" FontSize="11" FontWeight="Bold" VerticalAlignment="Center" />
+                    </Button>
+                    <Button Click="OnMinimizeClick" Width="30" Height="30" Background="#1A1A1A" BorderBrush="#2A2A2A" BorderThickness="1" CornerRadius="15" Cursor="Hand">
+                        <TextBlock Text="—" Foreground="#CCCCCC" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Button>
+                    <Button Click="OnCloseClick" Width="30" Height="30" Background="#1A1A1A" BorderBrush="#2A2A2A" BorderThickness="1" CornerRadius="15" Cursor="Hand">
+                        <TextBlock Text="✕" Foreground="#CCCCCC" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Button>
+                </StackPanel>
+
+                <!-- Accent Line -->
+                <Border Grid.ColumnSpan="3" Height="2" Background="#0A84FF" VerticalAlignment="Bottom" />
+            </Grid>
+
+            <!-- 2. Main Content Area -->
+            <Grid Grid.Row="1" Background="#F5F5F5">
+
+                <!-- STEP 1: INTRO / OVERVIEW -->
+                <Grid x:Name="IntroPage" RowDefinitions="*,Auto" Margin="28,20,28,20">
+                    <Grid Grid.Row="0" ColumnDefinitions="*,250" Margin="0,0,0,12">
+                        <!-- Left Intro Column -->
+                        <StackPanel Grid.Column="0" Spacing="16" VerticalAlignment="Center" Margin="0,0,16,0">
+                            <StackPanel Spacing="4">
+                                <TextBlock x:Name="TxtIntroTitle" Text="Modular Voice Studio v1.5.0" FontSize="23" FontWeight="Bold" Foreground="#1A1A1A" />
+                                <TextBlock x:Name="TxtIntroSubtitle" Text="Next-Generation Modular Vocal DSP Suite &amp; 3D Spatial Audio Engine" FontSize="13" Foreground="#0A84FF" FontWeight="SemiBold" TextWrapping="Wrap" />
+                            </StackPanel>
+
+                            <!-- Features Card -->
+                            <Border Background="#FFFFFF" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="6" Padding="14,12">
+                                <StackPanel Spacing="8">
+                                    <TextBlock x:Name="TxtFeat1" Text="• 64-bit ultra-low latency modular DSP canvas &amp; audio routing" FontSize="12.5" Foreground="#333333" />
+                                    <TextBlock x:Name="TxtFeat2" Text="• RNNoise deep learning AI neural background noise suppression" FontSize="12.5" Foreground="#333333" />
+                                    <TextBlock x:Name="TxtFeat3" Text="• Precision dynamic de-esser &amp; 7-band surgical parametric EQ" FontSize="12.5" Foreground="#333333" />
+                                    <TextBlock x:Name="TxtFeat4" Text="• Interactive 3D binaural spatial acoustic realm simulation" FontSize="12.5" Foreground="#333333" />
+                                </StackPanel>
+                            </Border>
+
+                            <TextBlock x:Name="TxtIntroDesc" Text="Click NEXT to proceed with installation." FontSize="12" Foreground="#666666" />
+                        </StackPanel>
+
+                        <!-- Right Poster Card -->
+                        <Border Grid.Column="1" Background="#141417" BorderBrush="#2A2A2E" BorderThickness="1" CornerRadius="8" ClipToBounds="True">
+                            <Grid>
+                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="14">
+                                    <Image Width="96" Height="96" Source="avares://ModularVoiceStudio_Setup/Assets/logo.png" HorizontalAlignment="Center" />
+                                    <TextBlock Text="MODULAR VOICE STUDIO" FontWeight="Bold" FontSize="12" Foreground="#0A84FF" HorizontalAlignment="Center" LetterSpacing="0.8" />
+                                </StackPanel>
+                                <Border Background="#D018181B" VerticalAlignment="Bottom" Padding="12,8">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="PROFESSIONAL DSP EDITION" FontWeight="Bold" FontSize="10" Foreground="#30D158" />
+                                        <TextBlock Text="v1.5.0 • 64-bit VST3 &amp; VST2" FontSize="10.5" Foreground="#DCDCDC" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </Border>
+                    </Grid>
+
+                    <!-- Bottom Buttons -->
+                    <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto">
+                        <Button Click="OnCancelClick" Content="CANCEL" x:Name="BtnIntroCancel" Height="36" Width="96"
+                                Background="#E03E3E" Foreground="#FFFFFF" BorderThickness="0"
+                                CornerRadius="18" FontWeight="Bold" FontSize="12" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Cursor="Hand" />
+                        <Button Click="OnGoToLicenseClick" Content="NEXT >" x:Name="BtnIntroNext" Grid.Column="2" Height="36" Padding="24,0"
+                                Background="#0A84FF" Foreground="#FFFFFF" BorderThickness="0"
+                                CornerRadius="18" FontWeight="Bold" FontSize="12" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Cursor="Hand" />
+                    </Grid>
+                </Grid>
+
+                <!-- STEP 2: LICENSE AGREEMENT -->
+                <Grid x:Name="LicensePage" IsVisible="False" RowDefinitions="*,Auto" Margin="28,20,28,20">
+                    <StackPanel Grid.Row="0" Spacing="12">
+                        <StackPanel Spacing="2">
+                            <TextBlock x:Name="TxtLicenseTitle" Text="License Agreement (GNU GPLv3)" FontSize="20" FontWeight="Bold" Foreground="#1A1A1A" />
+                            <TextBlock x:Name="TxtLicenseSubtitle" Text="Please review the license terms before proceeding." FontSize="12.5" Foreground="#666666" />
+                        </StackPanel>
+
+                        <!-- License Text Box -->
+                        <Border Background="#FFFFFF" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="6" Height="220" Padding="10">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <TextBlock x:Name="TxtLicenseContent" Text="GNU GENERAL PUBLIC LICENSE v3..." FontSize="11" Foreground="#333333" TextWrapping="Wrap" />
+                            </ScrollViewer>
+                        </Border>
+
+                        <CheckBox x:Name="ChkAgreeLicense" Content="I have read and agree to the terms of the license agreement." IsChecked="True" Foreground="#1A1A1A" FontSize="12.5" FontWeight="SemiBold" />
+                    </StackPanel>
+
+                    <!-- Bottom Buttons -->
+                    <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" Margin="0,12,0,0">
+                        <Button Click="OnCancelClick" Content="CANCEL" x:Name="BtnLicenseCancel" Height="36" Width="96"
+                                Background="#E03E3E" Foreground="#FFFFFF" BorderThickness="0"
+                                CornerRadius="18" FontWeight="Bold" FontSize="12" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Cursor="Hand" />
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10">
+                            <Button Click="OnGoToIntroClick" Content="&lt; BACK" x:Name="BtnLicenseBack" Height="36" Width="90"
+                                    Background="#EAEAEA" Foreground="#333333" BorderBrush="#CCCCCC" BorderThickness="1"
+                                    CornerRadius="18" FontWeight="SemiBold" FontSize="12" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Cursor="Hand" />
+                            <Button Click="OnGoToComponentsClick" Content="I AGREE >" x:Name="BtnLicenseNext" Height="36" Padding="24,0"
+                                    Background="#0A84FF" Foreground="#FFFFFF" BorderThickness="0"
+                                    CornerRadius="18" FontWeight="Bold" FontSize="12" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Cursor="Hand" />
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+
+                <!-- STEP 3: COMPONENT SELECTION (VST3 & VST2) -->
+                <Grid x:Name="ComponentsPage" IsVisible="False" RowDefinitions="*,Auto" Margin="28,20,28,20">
+                    <StackPanel Grid.Row="0" Spacing="14" VerticalAlignment="Center">
+                        <StackPanel Spacing="3">
+                            <TextBlock x:Name="TxtComponentsTitle" Text="Select Plugin Formats" FontSize="20" FontWeight="Bold" Foreground="#1A1A1A" />
+                            <TextBlock x:Name="TxtComponentsSubtitle" Text="Choose the plugin formats you want to install on your computer." FontSize="12.5" Foreground="#666666" />
+                        </StackPanel>
+
+                        <!-- VST3 Selection Card -->
+                        <Border Background="#FFFFFF" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="6" Padding="14">
+                            <Grid ColumnDefinitions="Auto,*">
+                                <CheckBox x:Name="ChkVst3" IsChecked="True" VerticalAlignment="Center" Margin="0,0,12,0" />
+                                <StackPanel Grid.Column="1" Spacing="2">
+                                    <TextBlock x:Name="TxtVst3Checkbox" Text="VST3 Plugin (Recommended / Modern DAWs)" FontWeight="Bold" FontSize="13" Foreground="#1A1A1A" />
+                                    <TextBlock x:Name="TxtVst3Desc" Text="Industry standard for FL Studio, Ableton Live, Reaper, Cubase, Studio One, OBS Studio." FontSize="11.5" Foreground="#666666" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- VST2 Selection Card -->
+                        <Border Background="#FFFFFF" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="6" Padding="14">
+                            <Grid ColumnDefinitions="Auto,*">
+                                <CheckBox x:Name="ChkVst2" IsChecked="True" VerticalAlignment="Center" Margin="0,0,12,0" />
+                                <StackPanel Grid.Column="1" Spacing="2">
+                                    <TextBlock x:Name="TxtVst2Checkbox" Text="VST2 Plugin (Legacy / 64-bit VST 2.4)" FontWeight="Bold" FontSize="13" Foreground="#1A1A1A" />
+                                    <TextBlock x:Name="TxtVst2Desc" Text="Support for older hosts and DAWs requiring 64-bit VST2 (.dll)." FontSize="11.5" Foreground="#666666" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <TextBlock x:Name="TxtWarningNoSelection" Text="Please select at least one plugin format to proceed." FontSize="11.5" Foreground="#E03E3E" IsVisible="False" FontWeight="SemiBold" />
+                    </StackPanel>
+
+                    <!-- Bottom Buttons -->
+                    <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" Margin="0,12,0,0">
+                        <Button Click="OnCancelClick" Content="CANCEL" x:Name="BtnComponentsCancel" Height="36" Width="96"
+                                Background="#E03E3E" Foreground="#FFFFFF" BorderThickness="0"
+                                CornerRadius="18" FontWeight="Bold" FontSize="12" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Cursor="Hand" />
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10">
+                            <Button Click="OnGoToLicenseClick" Content="&lt; BACK" x:Name="BtnComponentsBack" Height="36" Width="90"
+                                    Background="#EAEAEA" Foreground="#333333" BorderBrush="#CCCCCC" BorderThickness="1"
+                                    CornerRadius="18" FontWeight="SemiBold" FontSize="12" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Cursor="Hand" />
+                            <Button Click="OnGoToPathsClick" Content="NEXT >" x:Name="BtnComponentsNext" Height="36" Padding="24,0"
+                                    Background="#0A84FF" Foreground="#FFFFFF" BorderThickness="0"
+                                    CornerRadius="18" FontWeight="Bold" FontSize="12" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Cursor="Hand" />
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+
+                <!-- STEP 4: DIRECTORY CONFIGURATION (VST3 & VST2 Paths) -->
+                <Grid x:Name="PathsPage" IsVisible="False" RowDefinitions="*,Auto" Margin="28,20,28,20">
+                    <StackPanel Grid.Row="0" Spacing="14" VerticalAlignment="Center">
+                        <StackPanel Spacing="3">
+                            <TextBlock x:Name="TxtPathsTitle" Text="Installation Directories" FontSize="20" FontWeight="Bold" Foreground="#1A1A1A" />
+                            <TextBlock x:Name="TxtPathsSubtitle" Text="Specify the destination directories for the selected plugin formats." FontSize="12.5" Foreground="#666666" />
+                        </StackPanel>
+
+                        <!-- VST3 Directory Card -->
+                        <Border x:Name="Vst3PathCard" Background="#FFFFFF" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="6" Padding="14">
+                            <StackPanel Spacing="6">
+                                <TextBlock x:Name="TxtVst3PathLabel" Text="VST3 Plugin Location (64-bit):" FontSize="12" FontWeight="Bold" Foreground="#0A84FF" />
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBox x:Name="TxtVst3Path" Grid.Column="0" Height="34" CornerRadius="6,0,0,6"
+                                             Background="#F8F8F8" Foreground="#1A1A1A" BorderBrush="#CCCCCC"
+                                             VerticalContentAlignment="Center" Padding="10,0" />
+                                    <Button Click="OnBrowseVst3Click" Content="Browse..." x:Name="BtnBrowseVst3" Grid.Column="1"
+                                             Height="34" CornerRadius="0,6,6,0" Background="#EEEEEE" Foreground="#1A1A1A"
+                                             BorderBrush="#CCCCCC" Padding="14,0" Cursor="Hand" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- VST2 Directory Card -->
+                        <Border x:Name="Vst2PathCard" Background="#FFFFFF" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="6" Padding="14">
+                            <StackPanel Spacing="6">
+                                <TextBlock x:Name="TxtVst2PathLabel" Text="VST2 Plugin Location (64-bit):" FontSize="12" FontWeight="Bold" Foreground="#30D158" />
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBox x:Name="TxtVst2Path" Grid.Column="0" Height="34" CornerRadius="6,0,0,6"
+                                             Background="#F8F8F8" Foreground="#1A1A1A" BorderBrush="#CCCCCC"
+                                             VerticalContentAlignment="Center" Padding="10,0" />
+                                    <Button Click="OnBrowseVst2Click" Content="Browse..." x:Name="BtnBrowseVst2" Grid.Column="1"
+                                             Height="34" CornerRadius="0,6,6,0" Background="#EEEEEE" Foreground="#1A1A1A"
+                                             BorderBrush="#CCCCCC" Padding="14,0" Cursor="Hand" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Bottom Buttons -->
+                    <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" Margin="0,12,0,0">
+                        <Button Click="OnCancelClick" Content="CANCEL" x:Name="BtnPathsCancel" Height="36" Width="96"
+                                Background="#E03E3E" Foreground="#FFFFFF" BorderThickness="0"
+                                CornerRadius="18" FontWeight="Bold" FontSize="12" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Cursor="Hand" />
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10">
+                            <Button Click="OnGoToComponentsClick" Content="&lt; BACK" x:Name="BtnPathsBack" Height="36" Width="90"
+                                    Background="#EAEAEA" Foreground="#333333" BorderBrush="#CCCCCC" BorderThickness="1"
+                                    CornerRadius="18" FontWeight="SemiBold" FontSize="12" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Cursor="Hand" />
+                            <Button Click="OnStartInstallClick" Content="INSTALL NOW" x:Name="BtnStartInstall" Height="36" Padding="22,0"
+                                    Background="#0A84FF" Foreground="#FFFFFF" BorderThickness="0"
+                                    CornerRadius="18" FontWeight="Bold" FontSize="12" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Cursor="Hand" />
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+
+                <!-- STEP 5: INSTALLATION PROGRESS -->
+                <Grid x:Name="ProgressPage" IsVisible="False" RowDefinitions="*,Auto" Margin="28,24,28,20">
+                    <StackPanel Grid.Row="0" VerticalAlignment="Center" Spacing="20">
+                        <StackPanel Spacing="4" HorizontalAlignment="Center">
+                            <TextBlock x:Name="TxtProgressTitle" Text="Installing Modular Voice Studio..." FontSize="22" FontWeight="Bold" Foreground="#1A1A1A" HorizontalAlignment="Center" />
+                            <TextBlock x:Name="TxtStatus" Text="Extracting plugin files..." FontSize="13" Foreground="#666666" HorizontalAlignment="Center" />
+                        </StackPanel>
+
+                        <!-- Progress Bar -->
+                        <Border Background="#E0E0E0" BorderBrush="#CCCCCC" BorderThickness="1" CornerRadius="5" Height="12" Padding="1" Margin="20,10">
+                            <Border x:Name="ProgressBarFill" Background="#0A84FF" CornerRadius="4" HorizontalAlignment="Left" Width="0" Height="8" />
+                        </Border>
+
+                        <TextBlock x:Name="TxtPercent" Text="%0" FontSize="16" FontWeight="Bold" Foreground="#0A84FF" HorizontalAlignment="Center" />
+                    </StackPanel>
+
+                    <!-- Bottom Status Bar -->
+                    <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto">
+                        <TextBlock Text="v1.5.0 [x64] • GNU GPLv3 • Furkan &quot;rootcf&quot; Çentek" FontSize="11" Foreground="#888888" VerticalAlignment="Center" />
+                        <Border Grid.Column="2" Background="#0A84FF" CornerRadius="14" Height="28" Padding="16,0">
+                            <TextBlock x:Name="TxtInstallingBadge" Text="INSTALLING" Foreground="#FFFFFF" FontWeight="Bold" FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                        </Border>
+                    </Grid>
+                </Grid>
+
+                <!-- STEP 6: FINISHED -->
+                <Grid x:Name="FinishPage" IsVisible="False" RowDefinitions="*,Auto" Margin="28,24,28,20">
+                    <StackPanel Grid.Row="0" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="16">
+                        <Border Width="64" Height="64" CornerRadius="32" Background="#FFFFFF" BorderBrush="#30D158" BorderThickness="2.5" HorizontalAlignment="Center">
+                            <TextBlock Text="✓" FontSize="34" FontWeight="Bold" Foreground="#30D158" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+
+                        <StackPanel Spacing="4" HorizontalAlignment="Center">
+                            <TextBlock x:Name="TxtFinishTitle" Text="Installation Completed Successfully!" FontSize="22" FontWeight="Bold" Foreground="#1A1A1A" HorizontalAlignment="Center" />
+                            <TextBlock x:Name="TxtFinishDesc" Text="Modular Voice Studio has been installed and is ready for use in your DAW." FontSize="13" Foreground="#666666" HorizontalAlignment="Center" />
+                        </StackPanel>
+
+                        <!-- Installation Summary Details -->
+                        <Border Background="#FFFFFF" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="6" Padding="14,10" Width="560">
+                            <StackPanel Spacing="6">
+                                <TextBlock x:Name="TxtSummaryVst3" Text="• VST3: C:\Program Files\Common Files\VST3" FontSize="11.5" Foreground="#333333" TextWrapping="Wrap" />
+                                <TextBlock x:Name="TxtSummaryVst2" Text="• VST2: C:\Program Files\VSTPlugins" FontSize="11.5" Foreground="#333333" TextWrapping="Wrap" />
+                                <TextBlock x:Name="TxtDawTip" Text="Rescan plugins in your DAW (FL Studio, Ableton, Reaper, Cubase, etc.) to start using Modular Voice Studio." FontSize="11.5" Foreground="#0A84FF" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Bottom Finish Button -->
+                    <Grid Grid.Row="1" HorizontalAlignment="Right">
+                        <Button Click="OnFinishClick" Content="FINISH" x:Name="BtnFinish" Height="36" Width="120"
+                                Background="#0A84FF" Foreground="#FFFFFF" BorderThickness="0"
+                                CornerRadius="18" FontWeight="Bold" FontSize="12" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Cursor="Hand" />
+                    </Grid>
+                </Grid>
+
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

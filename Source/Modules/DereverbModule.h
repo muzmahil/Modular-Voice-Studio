@@ -21,9 +21,9 @@ public:
     DereverbModule()
         : ModuleProcessor ("De-reverb", createLayout())
     {
-        reductionParam = apvts.getRawParameterValue ("reduction");
-        decayParam     = apvts.getRawParameterValue ("decayTime");
-        sizeParam      = apvts.getRawParameterValue ("roomSize");
+        reductionParam = getModuleParam ("reduction", 70.0f);
+        decayParam     = getModuleParam ("decayTime", 0.45f);
+        sizeParam      = getModuleParam ("roomSize", 22.0f);
 
         for (int b = 0; b < numBands; ++b)
         {
@@ -57,9 +57,9 @@ public:
         const int numSamples  = buffer.getNumSamples();
         if (numChannels == 0 || numSamples == 0) return;
 
-        float reductionNorm = juce::jlimit (0.0f, 1.0f, reductionParam->load() * 0.01f);
-        float t60           = juce::jlimit (0.1f, 1.5f, decayParam->load());
-        float roomDelayMs   = juce::jlimit (5.0f, 50.0f, sizeParam->load());
+        float reductionNorm = juce::jlimit (0.0f, 1.0f, reductionParam.get (70.0f) * 0.01f);
+        float t60           = juce::jlimit (0.1f, 1.5f, decayParam.get (0.45f));
+        float roomDelayMs   = juce::jlimit (5.0f, 50.0f, sizeParam.get (22.0f));
 
         int delaySamples = juce::jlimit (1, (int) delayBuffer.size() - 1, (int) (roomDelayMs * 0.001f * (float) sampleRate));
         float decayAlpha = std::exp (-6.91f / (t60 * (float) sampleRate * 0.05f));
@@ -183,9 +183,9 @@ private:
         };
     }
 
-    std::atomic<float>* reductionParam = nullptr;
-    std::atomic<float>* decayParam     = nullptr;
-    std::atomic<float>* sizeParam      = nullptr;
+    ParamRef reductionParam;
+    ParamRef decayParam;
+    ParamRef sizeParam;
 
     double sampleRate = 48000.0;
     float bandEnergy[numBands];

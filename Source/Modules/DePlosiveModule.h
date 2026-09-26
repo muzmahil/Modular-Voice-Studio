@@ -14,9 +14,9 @@ public:
     DePlosiveModule()
         : ModuleProcessor ("De-Plosive", createLayout())
     {
-        freqParam   = apvts.getRawParameterValue ("frequency");
-        slopeParam  = apvts.getRawParameterValue ("slope");
-        dampParam   = apvts.getRawParameterValue ("damp");
+        freqParam   = getModuleParam ("frequency", 80.0f);
+        slopeParam  = getModuleParam ("slope", 1.0f);
+        dampParam   = getModuleParam ("damp", 50.0f);
 
         for (int b = 0; b < numBands; ++b)
             liveSpectrum[b].store (0.0f);
@@ -41,9 +41,9 @@ public:
         const int numSamples  = buffer.getNumSamples();
         if (numChannels == 0 || numSamples == 0) return;
 
-        float cutoff = juce::jlimit (20.0f, 300.0f, freqParam->load());
-        bool steepSlope = slopeParam->load() > 0.5f; // 0 = 12dB/oct, 1 = 24dB/oct
-        float dampAmt = juce::jlimit (0.0f, 1.0f, dampParam->load() * 0.01f);
+        float cutoff = juce::jlimit (20.0f, 300.0f, freqParam.get (80.0f));
+        bool steepSlope = slopeParam.get (1.0f) > 0.5f; // 0 = 12dB/oct, 1 = 24dB/oct
+        float dampAmt = juce::jlimit (0.0f, 1.0f, dampParam.get (50.0f) * 0.01f);
 
         updateCoefficients (cutoff);
 
@@ -131,8 +131,8 @@ public:
     juce::AudioProcessorEditor* createEditor() override;
 
     float getLivePlosiveActivity() const { return livePlosiveActivity.load (std::memory_order_relaxed); }
-    float getCutoffFreq() const { return freqParam ? freqParam->load() : 80.0f; }
-    bool isSteepSlope() const { return slopeParam && slopeParam->load() > 0.5f; }
+    float getCutoffFreq() const { return freqParam.get (80.0f); }
+    bool isSteepSlope() const { return slopeParam.get (1.0f) > 0.5f; }
     float getBandEnergy (int b) const { return liveSpectrum[juce::jlimit (0, numBands - 1, b)].load (std::memory_order_relaxed); }
     float getPreEnergy() const { return livePreEnergy.load (std::memory_order_relaxed); }
     float getPostEnergy() const { return livePostEnergy.load (std::memory_order_relaxed); }
@@ -179,9 +179,9 @@ private:
         a2 = (1.0f - alpha) / a0;
     }
 
-    std::atomic<float>* freqParam  = nullptr;
-    std::atomic<float>* slopeParam = nullptr;
-    std::atomic<float>* dampParam  = nullptr;
+    ParamRef freqParam;
+    ParamRef slopeParam;
+    ParamRef dampParam;
 
     double sampleRate = 44100.0;
     float b0 = 1.0f, b1 = 0.0f, b2 = 0.0f, a1 = 0.0f, a2 = 0.0f;

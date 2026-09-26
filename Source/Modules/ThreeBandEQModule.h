@@ -16,14 +16,14 @@ public:
     ThreeBandEQModule()
         : ModuleProcessor ("3-Band EQ", createLayout())
     {
-        lowGainParam    = apvts.getRawParameterValue ("lowGain");
-        lowFreqParam    = apvts.getRawParameterValue ("lowFreq");
-        midGainParam    = apvts.getRawParameterValue ("midGain");
-        midFreqParam    = apvts.getRawParameterValue ("midFreq");
-        midQParam       = apvts.getRawParameterValue ("midQ");
-        highGainParam   = apvts.getRawParameterValue ("highGain");
-        highFreqParam   = apvts.getRawParameterValue ("highFreq");
-        outputGainParam = apvts.getRawParameterValue ("outputGain");
+        lowGainParam    = getModuleParam ("lowGain", 0.0f);
+        lowFreqParam    = getModuleParam ("lowFreq", 150.0f);
+        midGainParam    = getModuleParam ("midGain", 0.0f);
+        midFreqParam    = getModuleParam ("midFreq", 1000.0f);
+        midQParam       = getModuleParam ("midQ", 1.0f);
+        highGainParam   = getModuleParam ("highGain", 0.0f);
+        highFreqParam   = getModuleParam ("highFreq", 5000.0f);
+        outputGainParam = getModuleParam ("outputGain", 0.0f);
     }
 
     ~ThreeBandEQModule() override = default;
@@ -42,14 +42,14 @@ public:
         const int numSamples  = buffer.getNumSamples();
         if (numChannels == 0 || numSamples == 0) return;
 
-        float lowGain    = lowGainParam    ? lowGainParam->load()    : 0.0f;
-        float lowFreq    = lowFreqParam    ? lowFreqParam->load()    : 150.0f;
-        float midGain    = midGainParam    ? midGainParam->load()    : 0.0f;
-        float midFreq    = midFreqParam    ? midFreqParam->load()    : 1000.0f;
-        float midQ       = midQParam       ? midQParam->load()       : 1.0f;
-        float highGain   = highGainParam   ? highGainParam->load()   : 0.0f;
-        float highFreq   = highFreqParam   ? highFreqParam->load()   : 5000.0f;
-        float outputGain = outputGainParam ? outputGainParam->load() : 0.0f;
+        float lowGain    = lowGainParam.get (0.0f);
+        float lowFreq    = lowFreqParam.get (150.0f);
+        float midGain    = midGainParam.get (0.0f);
+        float midFreq    = midFreqParam.get (1000.0f);
+        float midQ       = midQParam.get (1.0f);
+        float highGain   = highGainParam.get (0.0f);
+        float highFreq   = highFreqParam.get (5000.0f);
+        float outputGain = outputGainParam.get (0.0f);
 
         updateCoefficients (lowGain, lowFreq, midGain, midFreq, midQ, highGain, highFreq);
 
@@ -237,14 +237,14 @@ private:
         return out;
     }
 
-    std::atomic<float>* lowGainParam    = nullptr;
-    std::atomic<float>* lowFreqParam    = nullptr;
-    std::atomic<float>* midGainParam    = nullptr;
-    std::atomic<float>* midFreqParam    = nullptr;
-    std::atomic<float>* midQParam       = nullptr;
-    std::atomic<float>* highGainParam   = nullptr;
-    std::atomic<float>* highFreqParam   = nullptr;
-    std::atomic<float>* outputGainParam = nullptr;
+    ParamRef lowGainParam;
+    ParamRef lowFreqParam;
+    ParamRef midGainParam;
+    ParamRef midFreqParam;
+    ParamRef midQParam;
+    ParamRef highGainParam;
+    ParamRef highFreqParam;
+    ParamRef outputGainParam;
 
     double sampleRate = 44100.0;
 

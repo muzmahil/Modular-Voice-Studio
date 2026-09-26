@@ -1,0 +1,160 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:ModularVoiceStudio.App.Controls"
+             x:Class="ModularVoiceStudio.App.Controls.ChannelStripControl"
+             Width="215"
+             Margin="3">
+
+    <Border Background="#131720"
+            BorderBrush="#2A3546"
+            BorderThickness="1.2"
+            CornerRadius="8"
+            Padding="8">
+        
+        <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto,Auto">
+            
+            <!-- Channel Header -->
+            <Border Grid.Row="0" Background="#0C1016" CornerRadius="4" Padding="6,3" Margin="0,0,0,6">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    <Ellipse Width="4" Height="4" Fill="#5A6678" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1"
+                               Name="TxtChannelTitle"
+                               Text="MIC 1"
+                               FontSize="11"
+                               FontWeight="Bold"
+                               Foreground="#00E5FF"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center" />
+                    <Ellipse Grid.Column="2" Width="4" Height="4" Fill="#5A6678" VerticalAlignment="Center" />
+                </Grid>
+            </Border>
+
+            <!-- Mini Chain Screen -->
+            <controls:MiniChainScreenControl Grid.Row="1" Name="MiniScreen" Margin="0,0,0,6" />
+
+            <!-- Source Selector -->
+            <ComboBox Grid.Row="2"
+                      Name="CmbSource"
+                      HorizontalAlignment="Stretch"
+                      Height="24"
+                      FontSize="9.5"
+                      Background="#161C26"
+                      BorderBrush="#2C3B4E"
+                      Margin="0,0,0,6" />
+
+            <!-- Analog Gain Section -->
+            <Grid Grid.Row="3" ColumnDefinitions="Auto,*" Margin="0,0,0,6">
+                <!-- Circular Gain Knob -->
+                <Slider Name="SldGain"
+                        Minimum="-24"
+                        Maximum="24"
+                        Value="0"
+                        Width="44"
+                        Height="44"
+                        VerticalAlignment="Center"/>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="6,0,0,0">
+                    <TextBlock Name="TxtGainReadout" Text="GAIN: 0 dB" FontSize="9.5" FontWeight="Bold" Foreground="#94A3B8" />
+                    <TextBlock Text="PRE-AMP" FontSize="7.5" Foreground="#64748B" />
+                </StackPanel>
+            </Grid>
+
+            <!-- Fader & Calibrated VU-Meter Area -->
+            <Grid Grid.Row="4" ColumnDefinitions="Auto,Auto,*" Margin="0,4">
+                
+                <!-- 16-Segment LED VU-Meter -->
+                <Border Grid.Column="0"
+                        Width="10"
+                        Background="#080C10"
+                        BorderBrush="#1E2838"
+                        BorderThickness="1"
+                        CornerRadius="2"
+                        Padding="1">
+                    <StackPanel Name="MeterStack" Spacing="1" VerticalAlignment="Bottom">
+                        <!-- Red Peak Segments (Top) -->
+                        <Border Height="6" Background="#33FF3366" CornerRadius="1" Name="Seg15" />
+                        <Border Height="6" Background="#33FF3366" CornerRadius="1" Name="Seg14" />
+                        <Border Height="6" Background="#33FF3366" CornerRadius="1" Name="Seg13" />
+                        <!-- Amber Middle Segments -->
+                        <Border Height="6" Background="#33FFB300" CornerRadius="1" Name="Seg12" />
+                        <Border Height="6" Background="#33FFB300" CornerRadius="1" Name="Seg11" />
+                        <Border Height="6" Background="#33FFB300" CornerRadius="1" Name="Seg10" />
+                        <Border Height="6" Background="#33FFB300" CornerRadius="1" Name="Seg9" />
+                        <!-- Green Base Segments -->
+                        <Border Height="6" Background="#3300E676" CornerRadius="1" Name="Seg8" />
+                        <Border Height="6" Background="#3300E676" CornerRadius="1" Name="Seg7" />
+                        <Border Height="6" Background="#3300E676" CornerRadius="1" Name="Seg6" />
+                        <Border Height="6" Background="#3300E676" CornerRadius="1" Name="Seg5" />
+                        <Border Height="6" Background="#3300E676" CornerRadius="1" Name="Seg4" />
+                        <Border Height="6" Background="#3300E676" CornerRadius="1" Name="Seg3" />
+                        <Border Height="6" Background="#3300E676" CornerRadius="1" Name="Seg2" />
+                        <Border Height="6" Background="#3300E676" CornerRadius="1" Name="Seg1" />
+                        <Border Height="6" Background="#3300E676" CornerRadius="1" Name="Seg0" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Calibrated dB Scale Markings -->
+                <StackPanel Grid.Column="1" Width="24" VerticalAlignment="Stretch" Margin="3,0,0,0">
+                    <TextBlock Text="+6" FontSize="7.5" FontWeight="Bold" Foreground="#64748B" />
+                    <TextBlock Text="0" FontSize="7.5" FontWeight="Bold" Foreground="#94A3B8" Margin="0,25,0,0" />
+                    <TextBlock Text="-6" FontSize="7.5" FontWeight="Bold" Foreground="#64748B" Margin="0,25,0,0" />
+                    <TextBlock Text="-18" FontSize="7.5" FontWeight="Bold" Foreground="#64748B" Margin="0,25,0,0" />
+                    <TextBlock Text="-inf" FontSize="7" FontWeight="Bold" Foreground="#475569" Margin="0,25,0,0" />
+                </StackPanel>
+
+                <!-- Vertical Fader -->
+                <Slider Grid.Column="2"
+                        Name="SldFader"
+                        Orientation="Vertical"
+                        Minimum="-60"
+                        Maximum="6"
+                        Value="0"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Stretch" />
+            </Grid>
+
+            <!-- dB Readout -->
+            <TextBlock Grid.Row="5"
+                       Name="TxtFaderReadout"
+                       Text="0.0 dB"
+                       FontSize="10"
+                       FontWeight="Bold"
+                       Foreground="#00E5FF"
+                       HorizontalAlignment="Center"
+                       Margin="0,2,0,4" />
+
+            <!-- MUTE / SOLO Mechanical Buttons -->
+            <Grid Grid.Row="6" ColumnDefinitions="*,*" Margin="0,0,0,4">
+                <ToggleButton Name="BtnMute"
+                              Content="MUTE"
+                              FontSize="9"
+                              FontWeight="Bold"
+                              Height="22"
+                              HorizontalAlignment="Stretch"
+                              HorizontalContentAlignment="Center"
+                              Margin="0,0,2,0"
+                              Background="#1C2430"
+                              Foreground="#94A3B8" />
+                
+                <ToggleButton Grid.Column="1"
+                              Name="BtnSolo"
+                              Content="SOLO"
+                              FontSize="9"
+                              FontWeight="Bold"
+                              Height="22"
+                              HorizontalAlignment="Stretch"
+                              HorizontalContentAlignment="Center"
+                              Margin="2,0,0,0"
+                              Background="#1C2430"
+                              Foreground="#94A3B8" />
+            </Grid>
+
+            <!-- Bus Routing Switches (A1, B1, B2, SC) -->
+            <Grid Grid.Row="7" ColumnDefinitions="*,*,*,*">
+                <ToggleButton Name="BtnA1" Content="A1" FontSize="8.5" FontWeight="Bold" Height="20" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" IsChecked="True" Foreground="#00E676" />
+                <ToggleButton Grid.Column="1" Name="BtnB1" Content="B1" FontSize="8.5" FontWeight="Bold" Height="20" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="1,0" IsChecked="True" Foreground="#00B4D8" />
+                <ToggleButton Grid.Column="2" Name="BtnB2" Content="B2" FontSize="8.5" FontWeight="Bold" Height="20" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="1,0" IsChecked="True" Foreground="#FF9F1C" />
+                <ToggleButton Grid.Column="3" Name="BtnSC" Content="SC" FontSize="8.5" FontWeight="Bold" Height="20" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Foreground="#FFD166" />
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>

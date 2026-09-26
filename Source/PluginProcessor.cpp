@@ -4,26 +4,19 @@
 #include "Graph/MixWrapperProcessor.h"
 #include "Localization.h"
 
-PluginProcessor::PluginProcessor()
-    : juce::AudioProcessor (BusesProperties()
-          .withInput  ("Input",  juce::AudioChannelSet::stereo(), true)
-          .withOutput ("Output", juce::AudioChannelSet::stereo(), true))
+// =============================================================================
+// ChannelDSPProcessor Implementation
+// =============================================================================
+
+ChannelDSPProcessor::ChannelDSPProcessor (int channelIdx)
+    : channelIndex (channelIdx)
 {
-    addParameter (macro1 = new juce::AudioParameterFloat (juce::ParameterID { "macro1", 1 }, "Macro 1", 0.0f, 1.0f, 0.0f));
-    addParameter (macro2 = new juce::AudioParameterFloat (juce::ParameterID { "macro2", 1 }, "Macro 2", 0.0f, 1.0f, 0.0f));
-    addParameter (macro3 = new juce::AudioParameterFloat (juce::ParameterID { "macro3", 1 }, "Macro 3", 0.0f, 1.0f, 0.0f));
-    addParameter (macro4 = new juce::AudioParameterFloat (juce::ParameterID { "macro4", 1 }, "Macro 4", 0.0f, 1.0f, 0.0f));
-
     initialiseGraph();
-
-    inputWaveform.resize (waveformHistorySize, 0.0f);
-    outputWaveform.resize (waveformHistorySize, 0.0f);
 }
 
-PluginProcessor::~PluginProcessor() = default;
-
-void PluginProcessor::initialiseGraph()
+void ChannelDSPProcessor::initialiseGraph()
 {
+    const juce::ScopedLock sl (graph.getCallbackLock());
     graph.clear();
 
     audioInputNode = graph.addNode (std::make_unique<juce::AudioProcessorGraph::AudioGraphIOProcessor> (
@@ -31,208 +24,134 @@ void PluginProcessor::initialiseGraph()
     audioOutputNode = graph.addNode (std::make_unique<juce::AudioProcessorGraph::AudioGraphIOProcessor> (
         juce::AudioProcessorGraph::AudioGraphIOProcessor::audioOutputNode));
 
-    // Default on-canvas positions; overwritten on state reload if the user moved them.
-    audioInputNode->properties.set ("x", 1700); 
+    audioInputNode->properties.set ("x", 1700);
     audioInputNode->properties.set ("y", 1900);
     audioOutputNode->properties.set ("x", 2100);
     audioOutputNode->properties.set ("y", 1900);
-    // Default empty chain: input wired straight to output.
-    // The user rewires this from the canvas as soon as modules are added.
+
+    // Default clean 1:1 direct connection
     for (int ch = 0; ch < 2; ++ch)
         graph.addConnection ({ { audioInputNode->nodeID, ch }, { audioOutputNode->nodeID, ch } });
 
     updateOutputConnectionFlags();
 }
 
-void PluginProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
+void ChannelDSPProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    currentSampleRate.store ((float) sampleRate);
-    currentBlockSize.store (samplesPerBlock);
-
-    graph.setPlayConfigDetails (getMainBusNumInputChannels(), getMainBusNumOutputChannels(),
-                                 sampleRate, samplesPerBlock);
+    graph.setPlayConfigDetails (2, 2, sampleRate, samplesPerBlock);
     graph.prepareToPlay (sampleRate, samplesPerBlock);
     updateOutputConnectionFlags();
+
+    smoothedGain.reset (sampleRate, 0.010); // 10ms ramp
+    smoothedGain.setCurrentAndTargetValue (faderGainLinear.load());
+
+    smoothedDuck.reset (sampleRate, 0.010);
+    smoothedDuck.setCurrentAndTargetValue (1.0f);
+
+    smoothedBypass.reset (sampleRate, 0.010);
+    smoothedBypass.setCurrentAndTargetValue (isBypassed.load() ? 1.0f : 0.0f);
+
+    dryDelayBuffer.setSize (2, 16384);
+    dryDelayBuffer.clear();
+    dryDelayWritePos = 0;
 }
 
-void PluginProcessor::releaseResources()
+void ChannelDSPProcessor::releaseResources()
 {
     graph.releaseResources();
 }
 
-void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi)
+void ChannelDSPProcessor::processAudio (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi, float targetGainLinear, float targetDuckLinear)
 {
-    auto startTime = juce::Time::getHighResolutionTicks();
     int numSamples = buffer.getNumSamples();
-
-    float inPeak = buffer.getMagnitude (0, numSamples);
-    float prevIn = inputLevel.load();
-    inputLevel.store (inPeak > prevIn ? inPeak : prevIn * 0.92f);
-
-    // 1. Capture incoming dry audio for global waveform monitor
-    if (numSamples > 0 && buffer.getNumChannels() > 0)
+    if (numSamples <= 0 || buffer.getNumChannels() == 0)
     {
-        const float* inPtr = buffer.getReadPointer (0);
-        std::lock_guard<std::mutex> lock (waveformMutex);
-        for (int i = 0; i < numSamples; ++i)
-        {
-            inputWaveform[waveformWriteIndex] = inPtr[i];
-            waveformWriteIndex = (waveformWriteIndex + 1) % waveformHistorySize;
-        }
-    }
-
-    if (pluginBypassed.load())
-    {
-        // Master plugin bypass: DAW audio passes straight through completely untouched (dry bit-perfect).
-        outputLevel.store (inPeak > prevIn ? inPeak : prevIn * 0.92f);
-        currentCpuUsage.store (0.0f);
-        currentProcessTimeMs.store (0.0f);
-
-        // In bypass, output waveform mirrors input
-        if (numSamples > 0 && buffer.getNumChannels() > 0)
-        {
-            const float* inPtr = buffer.getReadPointer (0);
-            std::lock_guard<std::mutex> lock (waveformMutex);
-            int writeBack = (waveformWriteIndex - numSamples + waveformHistorySize) % waveformHistorySize;
-            for (int i = 0; i < numSamples; ++i)
-                outputWaveform[(writeBack + i) % waveformHistorySize] = inPtr[i];
-        }
+        inLevel.store (0.0f);
+        outLevel.store (0.0f);
         return;
     }
+
+    float inPeak = buffer.getMagnitude (0, numSamples);
+    float prevIn = inLevel.load();
+    inLevel.store (inPeak > prevIn ? inPeak : prevIn * 0.92f);
 
     bool ch0 = outputChannelConnected[0].load();
     bool ch1 = outputChannelConnected[1].load();
 
+    // 1. Store dry input into dry delay buffer for latency-compensated bypass
+    int delayCapacity = dryDelayBuffer.getNumSamples();
+    if (delayCapacity > 0)
+    {
+        for (int s = 0; s < numSamples; ++s)
+        {
+            int writeIdx = (dryDelayWritePos + s) % delayCapacity;
+            for (int ch = 0; ch < juce::jmin (2, buffer.getNumChannels()); ++ch)
+            {
+                dryDelayBuffer.setSample (ch, writeIdx, buffer.getSample (ch, s));
+            }
+        }
+    }
+
+    // 2. Prepare latency-aligned dry signal
+    int latency = graph.getLatencySamples();
+    juce::AudioBuffer<float> dryCopy (2, numSamples);
+    if (delayCapacity > 0)
+    {
+        for (int s = 0; s < numSamples; ++s)
+        {
+            int readIdx = (dryDelayWritePos + s - latency + delayCapacity * 4) % delayCapacity;
+            for (int ch = 0; ch < 2; ++ch)
+            {
+                dryCopy.setSample (ch, s, dryDelayBuffer.getSample (ch, readIdx));
+            }
+        }
+        dryDelayWritePos = (dryDelayWritePos + numSamples) % delayCapacity;
+    }
+
+    // 3. Process DSP Graph
     graph.processBlock (buffer, midi);
 
-    // 2. CRITICAL AUDIO LEAK FIX:
-    // If Audio Output node has no connections to channel 0 or 1, silence that channel!
-    // Prevents unrouted dry input audio from leaking into the DAW track.
+    // Silence if output is disconnected on canvas
     if (! ch0 && buffer.getNumChannels() > 0)
         buffer.clear (0, 0, numSamples);
     if (! ch1 && buffer.getNumChannels() > 1)
         buffer.clear (1, 0, numSamples);
 
-    // 3. Capture processed output audio for global waveform monitor
-    if (numSamples > 0 && buffer.getNumChannels() > 0)
+    // 4. Smooth Bypass Crossfade
+    smoothedBypass.setTargetValue (isBypassed.load() ? 1.0f : 0.0f);
+    for (int s = 0; s < numSamples; ++s)
     {
-        const float* outPtr = buffer.getReadPointer (0);
-        std::lock_guard<std::mutex> lock (waveformMutex);
-        int writeBack = (waveformWriteIndex - numSamples + waveformHistorySize) % waveformHistorySize;
-        for (int i = 0; i < numSamples; ++i)
-            outputWaveform[(writeBack + i) % waveformHistorySize] = outPtr[i];
-    }
-
-    float currentPeak = buffer.getMagnitude (0, numSamples);
-    float prevLevel = outputLevel.load();
-    outputLevel.store (currentPeak > prevLevel ? currentPeak : prevLevel * 0.92f);
-
-    auto endTime = juce::Time::getHighResolutionTicks();
-    double elapsedSeconds = juce::Time::highResolutionTicksToSeconds (endTime - startTime);
-    float elapsedMs = (float) (elapsedSeconds * 1000.0);
-
-    // Smooth response time (ms) and CPU usage percentage (%)
-    float prevProc = currentProcessTimeMs.load();
-    currentProcessTimeMs.store (prevProc * 0.92f + elapsedMs * 0.08f);
-
-    double sr = (double) currentSampleRate.load();
-    if (sr > 0.0 && numSamples > 0)
-    {
-        double blockBudget = (double) numSamples / sr;
-        if (blockBudget > 0.0)
+        float bypassAmount = smoothedBypass.getNextValue();
+        if (bypassAmount > 0.0f)
         {
-            float cpuPercent = (float) ((elapsedSeconds / blockBudget) * 100.0);
-            cpuPercent = juce::jlimit (0.0f, 100.0f, cpuPercent);
-            float prevCpu = currentCpuUsage.load();
-            currentCpuUsage.store (prevCpu * 0.92f + cpuPercent * 0.08f);
-        }
-    }
-}
-
-void PluginProcessor::updateOutputConnectionFlags()
-{
-    bool ch0 = false;
-    bool ch1 = false;
-    if (audioOutputNode != nullptr)
-    {
-        for (auto& c : graph.getConnections())
-        {
-            if (c.destination.nodeID == audioOutputNode->nodeID)
+            for (int ch = 0; ch < juce::jmin (2, buffer.getNumChannels()); ++ch)
             {
-                if (c.destination.channelIndex == 0) ch0 = true;
-                if (c.destination.channelIndex == 1) ch1 = true;
+                float wetSample = buffer.getSample (ch, s);
+                float drySample = dryCopy.getSample (ch, s);
+                buffer.setSample (ch, s, wetSample * (1.0f - bypassAmount) + drySample * bypassAmount);
             }
         }
     }
-    outputChannelConnected[0].store (ch0);
-    outputChannelConnected[1].store (ch1);
-}
 
-void PluginProcessor::getWaveformData (std::vector<float>& inDest, std::vector<float>& outDest)
-{
-    inDest.resize (waveformHistorySize);
-    outDest.resize (waveformHistorySize);
+    // 5. Apply Smoothed Gain (Fader & Solo/Mute) & Ducking
+    smoothedGain.setTargetValue (targetGainLinear);
+    smoothedDuck.setTargetValue (targetDuckLinear);
 
-    std::lock_guard<std::mutex> lock (waveformMutex);
-    int idx = waveformWriteIndex;
-    for (int i = 0; i < waveformHistorySize; ++i)
+    for (int s = 0; s < numSamples; ++s)
     {
-        inDest[i]  = inputWaveform[(idx + i) % waveformHistorySize];
-        outDest[i] = outputWaveform[(idx + i) % waveformHistorySize];
+        float totalGain = smoothedGain.getNextValue() * smoothedDuck.getNextValue();
+        for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
+        {
+            buffer.setSample (ch, s, buffer.getSample (ch, s) * totalGain);
+        }
     }
+
+    float outPeak = buffer.getMagnitude (0, numSamples);
+    float prevOut = outLevel.load();
+    outLevel.store (outPeak > prevOut ? outPeak : prevOut * 0.92f);
 }
 
-bool PluginProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
-{
-    return layouts.getMainInputChannelSet()  == juce::AudioChannelSet::stereo()
-        && layouts.getMainOutputChannelSet() == juce::AudioChannelSet::stereo();
-}
-
-int PluginProcessor::getNumPrograms()
-{
-    int num = presetManager.getPresetNames().size();
-    return num > 0 ? num : 1;
-}
-
-int PluginProcessor::getCurrentProgram()
-{
-    int idx = presetManager.getCurrentPresetIndex();
-    return idx >= 0 ? idx : 0;
-}
-
-void PluginProcessor::setCurrentProgram (int index)
-{
-    if (index >= 0 && index < presetManager.getPresetNames().size())
-    {
-        presetManager.loadPreset (index, *this);
-        sendChangeMessage();
-    }
-}
-
-const juce::String PluginProcessor::getProgramName (int index)
-{
-    const auto& names = presetManager.getPresetNames();
-    if (juce::isPositiveAndBelow (index, names.size()))
-        return names[index];
-    return "Default Patch";
-}
-
-void PluginProcessor::changeProgramName (int index, const juce::String& newName)
-{
-    juce::ignoreUnused (index);
-    if (newName.isNotEmpty())
-    {
-        presetManager.savePreset (newName, *this);
-        sendChangeMessage();
-    }
-}
-
-juce::AudioProcessorEditor* PluginProcessor::createEditor()
-{
-    return new PluginEditor (*this);
-}
-
-PluginProcessor::Node::Ptr PluginProcessor::addModule (const juce::String& typeId, juce::Point<int> canvasPosition)
+ChannelDSPProcessor::Node::Ptr ChannelDSPProcessor::addModule (const juce::String& typeId, juce::Point<int> canvasPosition)
 {
     try
     {
@@ -252,32 +171,25 @@ PluginProcessor::Node::Ptr PluginProcessor::addModule (const juce::String& typeI
         node->properties.set ("type", typeId);
         node->properties.set ("mix", 1.0f);
 
+        updateOutputConnectionFlags();
         sendChangeMessage();
-        historyManager.pushSnapshot (*this);
         return node;
-    }
-    catch (const std::exception& e)
-    {
-        juce::Logger::writeToLog ("Error adding module " + typeId + ": " + e.what());
-        return nullptr;
     }
     catch (...)
     {
-        juce::Logger::writeToLog ("Unknown error adding module " + typeId);
         return nullptr;
     }
 }
 
-void PluginProcessor::removeModule (NodeID id)
+void ChannelDSPProcessor::removeModule (NodeID id)
 {
     const juce::ScopedLock sl (graph.getCallbackLock());
     graph.removeNode (id);
     updateOutputConnectionFlags();
     sendChangeMessage();
-    historyManager.pushSnapshot (*this);
 }
 
-void PluginProcessor::removeModuleAndReconnect (NodeID id)
+void ChannelDSPProcessor::removeModuleAndReconnect (NodeID id)
 {
     const juce::ScopedLock sl (graph.getCallbackLock());
     std::vector<Connection> incoming;
@@ -291,7 +203,6 @@ void PluginProcessor::removeModuleAndReconnect (NodeID id)
             outgoing.push_back (c);
     }
 
-    // Reconnect incoming sources directly to outgoing destinations matching channels
     for (const auto& in : incoming)
     {
         for (const auto& out : outgoing)
@@ -309,10 +220,9 @@ void PluginProcessor::removeModuleAndReconnect (NodeID id)
     graph.removeNode (id);
     updateOutputConnectionFlags();
     sendChangeMessage();
-    historyManager.pushSnapshot (*this);
 }
 
-bool PluginProcessor::connect (NodeID sourceNode, int sourceChannel, NodeID destNode, int destChannel)
+bool ChannelDSPProcessor::connect (NodeID sourceNode, int sourceChannel, NodeID destNode, int destChannel)
 {
     const juce::ScopedLock sl (graph.getCallbackLock());
     bool ok = graph.addConnection ({ { sourceNode, sourceChannel }, { destNode, destChannel } });
@@ -320,34 +230,72 @@ bool PluginProcessor::connect (NodeID sourceNode, int sourceChannel, NodeID dest
     {
         updateOutputConnectionFlags();
         sendChangeMessage();
-        historyManager.pushSnapshot (*this);
     }
     return ok;
 }
 
-void PluginProcessor::disconnect (const Connection& connection)
+void ChannelDSPProcessor::disconnect (const Connection& connection)
 {
     const juce::ScopedLock sl (graph.getCallbackLock());
     graph.removeConnection (connection);
     updateOutputConnectionFlags();
     sendChangeMessage();
-    historyManager.pushSnapshot (*this);
 }
 
-void PluginProcessor::clearGraphToDefault()
+void ChannelDSPProcessor::clearGraphToDefault()
 {
-    const juce::ScopedLock sl (graph.getCallbackLock());
     initialiseGraph();
-    updateOutputConnectionFlags();
     sendChangeMessage();
-    historyManager.pushSnapshot (*this);
 }
 
-void PluginProcessor::getStateInformation (juce::MemoryBlock& destData)
+void ChannelDSPProcessor::updateOutputConnectionFlags()
 {
-    juce::ValueTree state ("MODULAR_AUDIO_OS");
+    bool ch0 = false;
+    bool ch1 = false;
+    if (audioOutputNode != nullptr)
+    {
+        for (auto& c : graph.getConnections())
+        {
+            if (c.destination.nodeID == audioOutputNode->nodeID)
+            {
+                if (c.destination.channelIndex == 0) ch0 = true;
+                if (c.destination.channelIndex == 1) ch1 = true;
+            }
+        }
+    }
+    outputChannelConnected[0].store (ch0);
+    outputChannelConnected[1].store (ch1);
+}
 
-    // I/O node positions & IDs are stored explicitly
+std::vector<juce::String> ChannelDSPProcessor::getActiveModuleNames() const
+{
+    std::vector<juce::String> names;
+    const juce::ScopedLock sl (graph.getCallbackLock());
+
+    auto connections = graph.getConnections();
+    std::set<NodeID> connectedNodes;
+    for (const auto& c : connections)
+    {
+        connectedNodes.insert (c.source.nodeID);
+        connectedNodes.insert (c.destination.nodeID);
+    }
+
+    for (auto* node : graph.getNodes())
+    {
+        if (node == audioInputNode.get() || node == audioOutputNode.get())
+            continue;
+        if (connectedNodes.find (node->nodeID) != connectedNodes.end())
+        {
+            if (auto* proc = node->getProcessor())
+                names.push_back (proc->getName());
+        }
+    }
+    return names;
+}
+
+void ChannelDSPProcessor::getStateInformation (juce::MemoryBlock& destData)
+{
+    juce::ValueTree state ("CHANNEL_GRAPH");
     state.setProperty ("inputX",  (int) audioInputNode->properties["x"], nullptr);
     state.setProperty ("inputY",  (int) audioInputNode->properties["y"], nullptr);
     state.setProperty ("outputX", (int) audioOutputNode->properties["x"], nullptr);
@@ -355,16 +303,9 @@ void PluginProcessor::getStateInformation (juce::MemoryBlock& destData)
     state.setProperty ("inputID",  (int) audioInputNode->nodeID.uid, nullptr);
     state.setProperty ("outputID", (int) audioOutputNode->nodeID.uid, nullptr);
 
-    // Persist Canvas camera position across sessions
     state.setProperty ("panX", canvasPanX, nullptr);
     state.setProperty ("panY", canvasPanY, nullptr);
     state.setProperty ("zoom", canvasZoom, nullptr);
-    state.setProperty ("pluginBypassed", pluginBypassed.load(), nullptr);
-    state.setProperty ("language", LocalizationManager::instance().getLanguageCode(), nullptr);
-    state.setProperty ("macro1", macro1->get(), nullptr);
-    state.setProperty ("macro2", macro2->get(), nullptr);
-    state.setProperty ("macro3", macro3->get(), nullptr);
-    state.setProperty ("macro4", macro4->get(), nullptr);
 
     juce::ValueTree nodes ("NODES");
     for (auto* node : graph.getNodes())
@@ -405,12 +346,12 @@ void PluginProcessor::getStateInformation (juce::MemoryBlock& destData)
     state.appendChild (connections, nullptr);
 
     if (auto xml = state.createXml())
-        copyXmlToBinary (*xml, destData);
+        juce::AudioProcessor::copyXmlToBinary (*xml, destData);
 }
 
-void PluginProcessor::setStateInformation (const void* data, int sizeInBytes)
+void ChannelDSPProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
-    auto xml = getXmlFromBinary (data, sizeInBytes);
+    auto xml = juce::AudioProcessor::getXmlFromBinary (data, sizeInBytes);
     if (xml == nullptr)
         return;
 
@@ -432,17 +373,6 @@ void PluginProcessor::setStateInformation (const void* data, int sizeInBytes)
         canvasZoom = (float) state["zoom"];
     }
 
-    if (state.hasProperty ("pluginBypassed"))
-        pluginBypassed.store ((bool) state["pluginBypassed"]);
-
-    if (state.hasProperty ("language"))
-        LocalizationManager::instance().setLanguageFromCode (state["language"].toString());
-
-    if (state.hasProperty ("macro1") && macro1 != nullptr) *macro1 = (float) state["macro1"];
-    if (state.hasProperty ("macro2") && macro2 != nullptr) *macro2 = (float) state["macro2"];
-    if (state.hasProperty ("macro3") && macro3 != nullptr) *macro3 = (float) state["macro3"];
-    if (state.hasProperty ("macro4") && macro4 != nullptr) *macro4 = (float) state["macro4"];
-
     std::map<int, NodeID> idRemap;
     int savedInID  = (int) state.getProperty ("inputID",  (int) audioInputNode->nodeID.uid);
     int savedOutID = (int) state.getProperty ("outputID", (int) audioOutputNode->nodeID.uid);
@@ -451,7 +381,10 @@ void PluginProcessor::setStateInformation (const void* data, int sizeInBytes)
     idRemap[1] = audioInputNode->nodeID;
     idRemap[2] = audioOutputNode->nodeID;
 
-    if (auto nodes = state.getChildWithName ("NODES"); nodes.isValid())
+    auto connections = state.getChildWithName ("CONNECTIONS");
+    bool hasValidConnections = (connections.isValid() && connections.getNumChildren() > 0);
+
+    if (auto nodes = state.getChildWithName ("NODES"); nodes.isValid() && hasValidConnections)
     {
         for (auto n : nodes)
         {
@@ -482,9 +415,8 @@ void PluginProcessor::setStateInformation (const void* data, int sizeInBytes)
         }
     }
 
-    if (auto connections = state.getChildWithName ("CONNECTIONS"); connections.isValid() && connections.getNumChildren() > 0)
+    if (hasValidConnections)
     {
-        // Clear the default direct 1:1 input->output connection so only saved user cables are active
         for (auto& c : graph.getConnections())
             graph.removeConnection (c);
 
@@ -504,66 +436,372 @@ void PluginProcessor::setStateInformation (const void* data, int sizeInBytes)
             }
         }
     }
+    else
+    {
+        clearGraphToDefault();
+    }
 
     updateOutputConnectionFlags();
     sendChangeMessage();
 }
 
 // =============================================================================
-// GraphHistoryManager Implementation
+// PluginProcessor Multi-Instance Implementation
 // =============================================================================
-void GraphHistoryManager::pushSnapshot (PluginProcessor& processor)
+
+PluginProcessor::PluginProcessor()
+    : juce::AudioProcessor (BusesProperties()
+          .withInput  ("Input",  juce::AudioChannelSet::stereo(), true)
+          .withOutput ("Output", juce::AudioChannelSet::stereo(), true))
 {
-    if (isPerformingUndoRedo)
-        return;
+    addParameter (macro1 = new juce::AudioParameterFloat (juce::ParameterID { "macro1", 1 }, "Macro 1", 0.0f, 1.0f, 0.0f));
+    addParameter (macro2 = new juce::AudioParameterFloat (juce::ParameterID { "macro2", 1 }, "Macro 2", 0.0f, 1.0f, 0.0f));
+    addParameter (macro3 = new juce::AudioParameterFloat (juce::ParameterID { "macro3", 1 }, "Macro 3", 0.0f, 1.0f, 0.0f));
+    addParameter (macro4 = new juce::AudioParameterFloat (juce::ParameterID { "macro4", 1 }, "Macro 4", 0.0f, 1.0f, 0.0f));
 
-    juce::MemoryBlock state;
-    processor.getStateInformation (state);
+    for (int i = 0; i < 4; ++i)
+    {
+        channels[i] = std::make_unique<ChannelDSPProcessor> (i);
+    }
+    for (int i = 0; i < 3; ++i)
+    {
+        auxCaptureWorkers[i] = std::make_unique<AuxAudioCaptureWorker>();
+    }
+    for (int i = 0; i < 2; ++i)
+    {
+        auxOutputWorkers[i] = std::make_unique<AuxAudioOutputWorker>();
+    }
 
-    if (state.getSize() == 0)
-        return;
-
-    if (! undoStack.empty() && undoStack.back() == state)
-        return;
-
-    undoStack.push_back (state);
-    redoStack.clear();
-
-    if (undoStack.size() > maxHistorySteps)
-        undoStack.erase (undoStack.begin());
+    inputWaveform.resize (waveformHistorySize, 0.0f);
+    outputWaveform.resize (waveformHistorySize, 0.0f);
 }
 
-void GraphHistoryManager::performUndo (PluginProcessor& processor)
+PluginProcessor::~PluginProcessor() = default;
+
+void PluginProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    if (! canUndo() || isPerformingUndoRedo)
-        return;
+    currentSampleRate.store ((float) sampleRate);
+    currentBlockSize.store (samplesPerBlock);
 
-    isPerformingUndoRedo = true;
+    for (int i = 0; i < 4; ++i)
+        channels[i]->prepareToPlay (sampleRate, samplesPerBlock);
 
-    auto current = undoStack.back();
-    undoStack.pop_back();
-    redoStack.push_back (current);
-
-    auto prev = undoStack.back();
-    processor.setStateInformation (prev.getData(), (int) prev.getSize());
-
-    isPerformingUndoRedo = false;
+    effectChain.prepareToPlay (sampleRate, samplesPerBlock);
 }
 
-void GraphHistoryManager::performRedo (PluginProcessor& processor)
+void PluginProcessor::releaseResources()
 {
-    if (! canRedo() || isPerformingUndoRedo)
+    for (int i = 0; i < 4; ++i)
+        channels[i]->releaseResources();
+
+    effectChain.releaseResources();
+}
+
+void PluginProcessor::switchChannelGraph (int newChannelIndex)
+{
+    activeChannelIndex = juce::jlimit (0, 3, newChannelIndex);
+    sendChangeMessage();
+}
+
+void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi)
+{
+    auto startTime = juce::Time::getHighResolutionTicks();
+    int numSamples = buffer.getNumSamples();
+    int numChannels = buffer.getNumChannels();
+
+    if (numSamples <= 0)
         return;
 
-    isPerformingUndoRedo = true;
+    // 1. Evaluate Solo Matrix
+    bool anySolo = false;
+    for (int i = 0; i < 4; ++i)
+    {
+        if (channels[i]->isSoloActive.load())
+        {
+            anySolo = true;
+            break;
+        }
+    }
 
-    auto next = redoStack.back();
-    redoStack.pop_back();
-    undoStack.push_back (next);
+    // 2. Prepare 4 Parallel Channel Audio Buffers
+    juce::AudioBuffer<float> chBuffers[4];
+    for (int i = 0; i < 4; ++i)
+    {
+        chBuffers[i].setSize (2, numSamples, false, false, true);
+        chBuffers[i].clear();
+    }
 
-    processor.setStateInformation (next.getData(), (int) next.getSize());
+    // Channel 0 (MIC 1): Direct zero-latency hardware input
+    if (numChannels >= 2)
+    {
+        chBuffers[0].copyFrom (0, 0, buffer, 0, 0, numSamples);
+        chBuffers[0].copyFrom (1, 0, buffer, 1, 0, numSamples);
+    }
+    else if (numChannels == 1)
+    {
+        chBuffers[0].copyFrom (0, 0, buffer, 0, 0, numSamples);
+        chBuffers[0].copyFrom (1, 0, buffer, 0, 0, numSamples);
+    }
 
-    isPerformingUndoRedo = false;
+    // Channels 1..3 (DESKTOP, AUX 3, AUX 4): Read resampled from AuxAudioCaptureWorker
+    double masterSr = currentSampleRate.load();
+    for (int i = 1; i < 4; ++i)
+    {
+        if (auxCaptureWorkers[i - 1] != nullptr)
+        {
+            auxCaptureWorkers[i - 1]->readResampled (chBuffers[i], 0, numSamples, masterSr);
+        }
+    }
+
+    // 3. Sidechain Hysteresis Ducking on Mic 1 pre-fader RMS
+    float mic1Rms = chBuffers[0].getRMSLevel (0, 0, numSamples);
+    if (chBuffers[0].getNumChannels() > 1)
+        mic1Rms = juce::jmax (mic1Rms, chBuffers[0].getRMSLevel (1, 0, numSamples));
+    float mic1Db = juce::Decibels::gainToDecibels (mic1Rms + 1e-6f);
+
+    if (mic1Db > -36.0f)
+        isSidechainTriggered = true;
+    else if (mic1Db < -40.0f)
+        isSidechainTriggered = false;
+
+    // 4. Process all 4 channels simultaneously through DSP matrix
+    for (int i = 0; i < 4; ++i)
+    {
+        bool isMuted = channels[i]->muted.load();
+        bool isSolo = channels[i]->isSoloActive.load();
+
+        float effectiveGain = 0.0f;
+        if (anySolo)
+        {
+            effectiveGain = (isSolo && !isMuted) ? channels[i]->faderGainLinear.load() : 0.0f;
+        }
+        else
+        {
+            effectiveGain = (!isMuted) ? channels[i]->faderGainLinear.load() : 0.0f;
+        }
+
+        float duckGain = 1.0f;
+        if (channels[i]->isSidechainActive.load() && isSidechainTriggered)
+        {
+            duckGain = 0.2512f; // -12 dB ducking
+        }
+
+        channels[i]->processAudio (chBuffers[i], midi, effectiveGain, duckGain);
+    }
+
+    // Process Modular Voice Studio -> Dynamic Effect Chain (Strip 0 -> Strip 1 -> ... -> Strip N)
+    effectChain.processChain (chBuffers[0], midi);
+
+    // 5. Route & Sum to Output Buses
+    // Main hardware buffer (Cleared in standalone, used only in DAW plugins)
+    buffer.clear();
+
+    if (wrapperType == wrapperType_VST3 || wrapperType == wrapperType_AudioUnit || wrapperType == wrapperType_AAX)
+    {
+        int activeIdx = activeChannelIndex;
+        buffer.copyFrom (0, 0, chBuffers[activeIdx], 0, 0, numSamples);
+        if (buffer.getNumChannels() > 1)
+            buffer.copyFrom (1, 0, chBuffers[activeIdx], 1, 0, numSamples);
+    }
+    else
+    {
+        bool monitorWorkerActive = (auxOutputWorkers[1] != nullptr && auxOutputWorkers[1]->isActive());
+        if (! monitorWorkerActive && (channels[0]->isMonitoringActive.load() || anySolo))
+        {
+            buffer.copyFrom (0, 0, chBuffers[0], 0, 0, numSamples);
+            if (buffer.getNumChannels() > 1 && chBuffers[0].getNumChannels() > 1)
+                buffer.copyFrom (1, 0, chBuffers[0], 1, 0, numSamples);
+        }
+    }
+
+    // Bus B1 (VB-CABLE Virtual Mic Output)
+    juce::AudioBuffer<float> busB1 (2, numSamples);
+    busB1.clear();
+
+    for (int i = 0; i < 4; ++i)
+    {
+        if (channels[i]->isBusB1Active.load())
+        {
+            busB1.addFrom (0, 0, chBuffers[i], 0, 0, numSamples);
+            busB1.addFrom (1, 0, chBuffers[i], 1, 0, numSamples);
+        }
+    }
+
+    if (auxOutputWorkers[0] != nullptr)
+        auxOutputWorkers[0]->writeStream (busB1, 0, numSamples, masterSr);
+
+    // Bus A1 (Headphone Monitor Output - Only sends audio when isMonitoringActive is true)
+    juce::AudioBuffer<float> monitorBus (2, numSamples);
+    monitorBus.clear();
+
+    for (int i = 0; i < 4; ++i)
+    {
+        if (channels[i]->isMonitoringActive.load())
+        {
+            monitorBus.addFrom (0, 0, chBuffers[i], 0, 0, numSamples);
+            if (monitorBus.getNumChannels() > 1 && chBuffers[i].getNumChannels() > 1)
+                monitorBus.addFrom (1, 0, chBuffers[i], 1, 0, numSamples);
+        }
+    }
+
+    if (auxOutputWorkers[1] != nullptr)
+        auxOutputWorkers[1]->writeStream (monitorBus, 0, numSamples, masterSr);
+
+    // Waveform & Peak Telemetry
+    float rawInPeak = chBuffers[0].getMagnitude (0, numSamples);
+    float prevIn = inputLevel.load();
+    inputLevel.store (rawInPeak > prevIn ? rawInPeak : prevIn * 0.92f);
+
+    float currentPeak = (numSamples > 0 && buffer.getNumChannels() > 0) ? buffer.getMagnitude (0, numSamples) : 0.0f;
+    float prevLevel = outputLevel.load();
+    outputLevel.store (currentPeak > prevLevel ? currentPeak : prevLevel * 0.92f);
+
+    if (numSamples > 0 && buffer.getNumChannels() > 0)
+    {
+        const float* outPtr = buffer.getReadPointer (0);
+        std::lock_guard<std::mutex> lock (waveformMutex);
+        int writeBack = (waveformWriteIndex - numSamples + waveformHistorySize) % waveformHistorySize;
+        for (int i = 0; i < numSamples; ++i)
+            outputWaveform[(writeBack + i) % waveformHistorySize] = outPtr[i];
+    }
+
+    auto endTime = juce::Time::getHighResolutionTicks();
+    double elapsedSeconds = juce::Time::highResolutionTicksToSeconds (endTime - startTime);
+    float elapsedMs = (float) (elapsedSeconds * 1000.0);
+    float prevProc = currentProcessTimeMs.load();
+    currentProcessTimeMs.store (prevProc * 0.92f + elapsedMs * 0.08f);
+
+    double sr = currentSampleRate.load();
+    if (sr > 0.0)
+    {
+        double blockBudget = (double) numSamples / sr;
+        if (blockBudget > 0.0)
+        {
+            float cpuPercent = (float) ((elapsedSeconds / blockBudget) * 100.0);
+            cpuPercent = juce::jlimit (0.0f, 100.0f, cpuPercent);
+            float prevCpu = currentCpuUsage.load();
+            currentCpuUsage.store (prevCpu * 0.92f + cpuPercent * 0.08f);
+        }
+    }
+}
+
+bool PluginProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
+{
+    return layouts.getMainOutputChannelSet() == juce::AudioChannelSet::stereo();
+}
+
+void PluginProcessor::getWaveformData (std::vector<float>& inDest, std::vector<float>& outDest)
+{
+    std::lock_guard<std::mutex> lock (waveformMutex);
+    inDest.resize (waveformHistorySize);
+    outDest.resize (waveformHistorySize);
+
+    for (int i = 0; i < waveformHistorySize; ++i)
+    {
+        int idx = (waveformWriteIndex + i) % waveformHistorySize;
+        inDest[i]  = inputWaveform[idx];
+        outDest[i] = outputWaveform[idx];
+    }
+}
+
+int PluginProcessor::getNumPrograms() { return 1; }
+int PluginProcessor::getCurrentProgram() { return getActiveChannel().getPresetManager().getCurrentPresetIndex(); }
+void PluginProcessor::setCurrentProgram (int index)
+{
+    getActiveChannel().getPresetManager().loadPreset (index, *this);
+    sendChangeMessage();
+}
+const juce::String PluginProcessor::getProgramName (int index)
+{
+    const auto& names = getActiveChannel().getPresetManager().getPresetNames();
+    if (juce::isPositiveAndBelow (index, names.size()))
+        return names[index];
+    return "Default Patch";
+}
+void PluginProcessor::changeProgramName (int index, const juce::String& newName)
+{
+    juce::ignoreUnused (index);
+    if (newName.isNotEmpty())
+    {
+        getActiveChannel().getPresetManager().savePreset (newName, *this);
+        sendChangeMessage();
+    }
+}
+
+void PluginProcessor::getStateInformation (juce::MemoryBlock& destData)
+{
+    juce::ValueTree state ("MODULAR_AUDIO_OS_MULTI");
+    state.setProperty ("activeChannel", activeChannelIndex, nullptr);
+    state.setProperty ("pluginBypassed", pluginBypassed.load(), nullptr);
+    state.setProperty ("language", LocalizationManager::instance().getLanguageCode(), nullptr);
+
+    for (int i = 0; i < 4; ++i)
+    {
+        juce::MemoryBlock chData;
+        channels[i]->getStateInformation (chData);
+        juce::ValueTree chTree ("CHANNEL");
+        chTree.setProperty ("index", i, nullptr);
+        chTree.setProperty ("data", chData.toBase64Encoding(), nullptr);
+        state.appendChild (chTree, nullptr);
+    }
+
+    if (auto xml = state.createXml())
+        copyXmlToBinary (*xml, destData);
+}
+
+void PluginProcessor::setStateInformation (const void* data, int sizeInBytes)
+{
+    auto xml = getXmlFromBinary (data, sizeInBytes);
+    if (xml == nullptr)
+        return;
+
+    auto state = juce::ValueTree::fromXml (*xml);
+    if (state.hasType ("MODULAR_AUDIO_OS_MULTI"))
+    {
+        if (state.hasProperty ("activeChannel"))
+            activeChannelIndex = (int) state["activeChannel"];
+
+        for (auto chTree : state)
+        {
+            if (chTree.hasType ("CHANNEL"))
+            {
+                int idx = (int) chTree["index"];
+                if (idx >= 0 && idx < 4)
+                {
+                    juce::MemoryBlock chData;
+                    chData.fromBase64Encoding (chTree["data"].toString());
+                    channels[idx]->setStateInformation (chData.getData(), (int) chData.getSize());
+                }
+            }
+        }
+    }
+    else
+    {
+        // Legacy single-graph state backward compatibility
+        channels[0]->setStateInformation (data, sizeInBytes);
+    }
+
+    sendChangeMessage();
+}
+
+void PluginProcessor::resetAllToFactoryDefaults()
+{
+    for (int i = 0; i < 4; ++i)
+    {
+        channels[i]->clearGraphToDefault();
+        channels[i]->faderGainLinear.store (1.0f);
+        channels[i]->muted.store (false);
+        channels[i]->isSoloActive.store (false);
+        channels[i]->isBypassed.store (false);
+        channels[i]->isMonitoringActive.store (false);
+        channels[i]->isBusB1Active.store (true);
+    }
+    sendChangeMessage();
+}
+
+juce::AudioProcessorEditor* PluginProcessor::createEditor()
+{
+    return new PluginEditor (*this);
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()

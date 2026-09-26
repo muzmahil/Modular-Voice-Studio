@@ -102,22 +102,25 @@ juce::Font CustomLookAndFeel::getLabelFont (juce::Label& label)
     return UITheme::getFont (label.getFont().getHeight());
 }
 
-void CustomLookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Button& button, const juce::Colour&,
+void CustomLookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Button& button, const juce::Colour& backgroundColour,
                                                bool isHighlighted, bool isDown)
 {
     auto bounds = button.getLocalBounds().toFloat().reduced (0.5f);
     const float corner = 5.0f;
 
     bool on = button.getToggleState();
-    juce::Colour base = on ? UITheme::appleBlue : juce::Colour (0xff2c2c31);
-    if (isDown)              base = base.darker (0.08f);
-    else if (isHighlighted) base = base.brighter (0.06f);
+    juce::Colour base = backgroundColour;
+    if (base.getAlpha() == 0 || base == juce::Colour())
+        base = on ? UITheme::appleBlue : juce::Colour (0xff2c2c31);
+
+    if (isDown)              base = base.darker (0.12f);
+    else if (isHighlighted) base = base.brighter (0.08f);
 
     g.setColour (base);
     g.fillRoundedRectangle (bounds, corner);
 
     // Apple subtle keyline
-    g.setColour (on ? UITheme::appleBlue : juce::Colour (0xff3a3a40));
+    g.setColour (on ? UITheme::appleBlue : base.brighter (0.15f));
     g.drawRoundedRectangle (bounds, corner, 1.0f);
 }
 

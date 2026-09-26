@@ -20,12 +20,12 @@ public:
     CompressorModule()
         : ModuleProcessor ("Compressor", createLayout())
     {
-        threshParam  = apvts.getRawParameterValue ("threshold");
-        ratioParam   = apvts.getRawParameterValue ("ratio");
-        attackParam  = apvts.getRawParameterValue ("attack");
-        releaseParam = apvts.getRawParameterValue ("release");
-        kneeParam    = apvts.getRawParameterValue ("knee");
-        makeupParam  = apvts.getRawParameterValue ("makeup");
+        threshParam  = getModuleParam ("threshold", -24.0f);
+        ratioParam   = getModuleParam ("ratio", 4.0f);
+        attackParam  = getModuleParam ("attack", 15.0f);
+        releaseParam = getModuleParam ("release", 150.0f);
+        kneeParam    = getModuleParam ("knee", 6.0f);
+        makeupParam  = getModuleParam ("makeup", 0.0f);
 
         for (int i = 0; i < historyLength; ++i)
             history[i] = { -80.0f, -80.0f, 0.0f };
@@ -46,12 +46,12 @@ public:
         const int numSamples  = buffer.getNumSamples();
         if (numChannels == 0 || numSamples == 0) return;
 
-        float threshold = threshParam->load();
-        float ratio     = juce::jmax (1.0f, ratioParam->load());
-        float attMs     = juce::jmax (0.5f, attackParam->load());
-        float relMs     = juce::jmax (10.0f, releaseParam->load());
-        float knee      = juce::jmax (0.0f, kneeParam->load());
-        float makeupDb  = makeupParam->load();
+        float threshold = threshParam.get (-24.0f);
+        float ratio     = juce::jmax (1.0f, ratioParam.get (4.0f));
+        float attMs     = juce::jmax (0.5f, attackParam.get (15.0f));
+        float relMs     = juce::jmax (10.0f, releaseParam.get (120.0f));
+        float knee      = juce::jmax (0.0f, kneeParam.get (6.0f));
+        float makeupDb  = makeupParam.get (0.0f);
         float makeupLin = juce::Decibels::decibelsToGain (makeupDb);
 
         float attCoeff = std::exp (-1.0f / (float) ((attMs * 0.001f) * sampleRate));
@@ -133,9 +133,9 @@ public:
     float getLiveGainReduction() const { return liveGainReduction.load (std::memory_order_relaxed); }
     float getLiveInputPeak() const     { return liveInputPeak.load (std::memory_order_relaxed); }
     float getLiveOutputPeak() const    { return liveOutputPeak.load (std::memory_order_relaxed); }
-    float getThresholdDb() const       { return threshParam ? threshParam->load() : -24.0f; }
-    float getRatio() const             { return ratioParam ? ratioParam->load() : 4.0f; }
-    float getKnee() const              { return kneeParam ? kneeParam->load() : 6.0f; }
+    float getThresholdDb() const       { return threshParam.get (-24.0f); }
+    float getRatio() const             { return ratioParam.get (4.0f); }
+    float getKnee() const              { return kneeParam.get (6.0f); }
 
     void getHistory (std::vector<HistoryPoint>& dest) const
     {
@@ -181,12 +181,12 @@ private:
         };
     }
 
-    std::atomic<float>* threshParam  = nullptr;
-    std::atomic<float>* ratioParam   = nullptr;
-    std::atomic<float>* attackParam  = nullptr;
-    std::atomic<float>* releaseParam = nullptr;
-    std::atomic<float>* kneeParam    = nullptr;
-    std::atomic<float>* makeupParam  = nullptr;
+    ParamRef threshParam;
+    ParamRef ratioParam;
+    ParamRef attackParam;
+    ParamRef releaseParam;
+    ParamRef kneeParam;
+    ParamRef makeupParam;
 
     double sampleRate = 44100.0;
     float envDb = -80.0f;

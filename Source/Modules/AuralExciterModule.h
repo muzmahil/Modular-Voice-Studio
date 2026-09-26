@@ -13,10 +13,10 @@ public:
     AuralExciterModule()
         : ModuleProcessor ("Aural Exciter", createLayout())
     {
-        freqParam   = apvts.getRawParameterValue ("frequency");
-        driveParam  = apvts.getRawParameterValue ("drive");
-        mixParam    = apvts.getRawParameterValue ("mix");
-        airHarmParam= apvts.getRawParameterValue ("airHarmonics");
+        freqParam   = getModuleParam ("frequency", 5500.0f);
+        driveParam  = getModuleParam ("drive", 35.0f);
+        mixParam    = getModuleParam ("mix", 40.0f);
+        airHarmParam= getModuleParam ("airHarmonics", 50.0f);
 
         for (int b = 0; b < numBands; ++b)
             liveAirSpectrum[b].store (0.0f);
@@ -36,10 +36,10 @@ public:
         const int numSamples  = buffer.getNumSamples();
         if (numChannels == 0 || numSamples == 0) return;
 
-        float freq      = juce::jlimit (2500.0f, 10000.0f, freqParam->load());
-        float driveNorm = juce::jlimit (0.0f, 1.0f, driveParam->load() * 0.01f);
-        float mixNorm   = juce::jlimit (0.0f, 1.0f, mixParam->load() * 0.01f);
-        float airHarm   = juce::jlimit (0.0f, 1.0f, airHarmParam->load() * 0.01f);
+        float freq      = juce::jlimit (2500.0f, 10000.0f, freqParam.get (5500.0f));
+        float driveNorm = juce::jlimit (0.0f, 1.0f, driveParam.get (35.0f) * 0.01f);
+        float mixNorm   = juce::jlimit (0.0f, 1.0f, mixParam.get (40.0f) * 0.01f);
+        float airHarm   = juce::jlimit (0.0f, 1.0f, airHarmParam.get (50.0f) * 0.01f);
 
         updateSidechainHighPass (freq);
 
@@ -107,7 +107,7 @@ public:
     juce::AudioProcessorEditor* createEditor() override;
 
     float getLiveExciterEnergy() const { return liveExciterEnergy.load (std::memory_order_relaxed); }
-    float getFrequency() const         { return freqParam ? freqParam->load() : 5000.0f; }
+    float getFrequency() const         { return freqParam.get (5000.0f); }
     float getAirBandEnergy (int b) const { return liveAirSpectrum[juce::jlimit (0, numBands - 1, b)].load (std::memory_order_relaxed); }
 
 private:
@@ -155,10 +155,10 @@ private:
         hpA2 = (1.0f - alpha) / a0;
     }
 
-    std::atomic<float>* freqParam    = nullptr;
-    std::atomic<float>* driveParam   = nullptr;
-    std::atomic<float>* mixParam     = nullptr;
-    std::atomic<float>* airHarmParam = nullptr;
+    ParamRef freqParam;
+    ParamRef driveParam;
+    ParamRef mixParam;
+    ParamRef airHarmParam;
 
     double sampleRate = 44100.0;
     float hpB0 = 1.0f, hpB1 = 0.0f, hpB2 = 0.0f, hpA1 = 0.0f, hpA2 = 0.0f;

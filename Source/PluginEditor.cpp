@@ -51,12 +51,16 @@ PluginEditor::PluginEditor (PluginProcessor& p)
     prevPresetBtn.onClick = [this]
     {
         processor.getPresetManager().loadPreviousPreset (processor);
+        canvas.rebuildFromGraph();
         updatePresetUI();
+        repaint();
     };
     nextPresetBtn.onClick = [this]
     {
         processor.getPresetManager().loadNextPreset (processor);
+        canvas.rebuildFromGraph();
         updatePresetUI();
+        repaint();
     };
 
     addAndMakeVisible (presetBox);
@@ -69,13 +73,17 @@ PluginEditor::PluginEditor (PluginProcessor& p)
             // <Empty / Blank Canvas>
             processor.clearGraphToDefault();
             processor.getPresetManager().clearCurrentPresetIndex();
+            canvas.rebuildFromGraph();
             updatePresetUI();
+            repaint();
         }
         else if (id > 1)
         {
             int idx = id - 2;
             processor.getPresetManager().loadPreset (idx, processor);
+            canvas.rebuildFromGraph();
             updatePresetUI();
+            repaint();
         }
     };
 
@@ -184,11 +192,82 @@ PluginEditor::PluginEditor (PluginProcessor& p)
     LocalizationManager::instance().addListener (this);
     processor.addChangeListener (this);
 
+    // Standalone Calm 4-Channel Mixer initialization
+    isStandaloneMode = (processor.wrapperType == juce::AudioProcessor::wrapperType_Standalone);
+    if (isStandaloneMode)
+    {
+        isStandaloneMixerViewActive = true;
+        standaloneMixer = std::make_unique<StandaloneMixerComponent> (processor);
+        standaloneMixer->onOpenModularCanvas = [this] (int channelIndex)
+        {
+            processor.switchChannelGraph (channelIndex);
+            isStandaloneMixerViewActive = false;
+            if (standaloneMixer != nullptr)
+                standaloneMixer->setVisible (false);
+            backToMixerBtn.setVisible (true);
+            dspChainTitleLabel.setVisible (true);
+            updateDspChainTitle();
+            canvas.rebuildFromGraph();
+            updatePresetUI();
+            setSize (1260, 780);
+            if (auto* dw = findParentComponentOfClass<juce::DocumentWindow>())
+                dw->centreWithSize (1260, 780);
+            resized();
+            repaint();
+        };
+        standaloneMixer->onOpenSettings = [this]()
+        {
+            openPreferences (PreferencesModal::Tab::AudioDevice);
+        };
+        addAndMakeVisible (*standaloneMixer);
+
+        backToMixerBtn.setButtonText ("← Mixer");
+        backToMixerBtn.setColour (juce::TextButton::buttonColourId, CalmTheme::cyanSoft);
+        backToMixerBtn.setColour (juce::TextButton::textColourOffId, CalmTheme::bgApp);
+        backToMixerBtn.setColour (juce::TextButton::textColourOnId, juce::Colours::white);
+        backToMixerBtn.onClick = [this]()
+        {
+            isStandaloneMixerViewActive = true;
+            if (standaloneMixer != nullptr)
+                standaloneMixer->setVisible (true);
+            backToMixerBtn.setVisible (false);
+            dspChainTitleLabel.setVisible (false);
+            setSize (780, 580);
+            if (auto* dw = findParentComponentOfClass<juce::DocumentWindow>())
+                dw->centreWithSize (780, 580);
+            resized();
+            repaint();
+        };
+        addChildComponent (backToMixerBtn);
+
+        dspChainTitleLabel.setFont (UITheme::getFont (13.5f).boldened());
+        dspChainTitleLabel.setColour (juce::Label::textColourId, CalmTheme::cyanSoft);
+        dspChainTitleLabel.setJustificationType (juce::Justification::centredLeft);
+        addChildComponent (dspChainTitleLabel);
+    }
+
     openGLContext.attachTo (*this);
-    setResizable (true, true);
+    setResizable (!isStandaloneMode, !isStandaloneMode);
     startTimerHz (30);
 
-    setSize (1300, 800);
+    if (isStandaloneMode)
+        setSize (780, 580);
+    else
+        setSize (1300, 800);
+}
+
+void PluginEditor::parentHierarchyChanged()
+{
+    if (isStandaloneMode)
+    {
+        if (auto* dw = findParentComponentOfClass<juce::DocumentWindow>())
+        {
+            dw->setTitleBarHeight (0);
+            dw->setResizable (false, false);
+            dw->setSize (780, 580);
+            dw->centreWithSize (780, 580);
+        }
+    }
 }
 
 PluginEditor::~PluginEditor()
@@ -211,6 +290,15 @@ void PluginEditor::changeListenerCallback (juce::ChangeBroadcaster* source)
     repaint();
 }
 
+void PluginEditor::refreshCanvasView()
+{
+    updatePresetUI();
+    canvas.rebuildFromGraph();
+    canvas.setPanAndZoom (processor.canvasPanX, processor.canvasPanY, processor.canvasZoom);
+    updateZoomReadout();
+    repaint();
+}
+
 void PluginEditor::localizationChanged()
 {
     updateLocalizedStrings();
@@ -226,6 +314,7 @@ void PluginEditor::updateLocalizedStrings()
     redoBtn.setButtonText (tr ("REDO"));
     snapToggleBtn.setButtonText (tr ("SNAP"));
     settingsBtn.setButtonText (tr ("SETTINGS"));
+    backToMixerBtn.setButtonText ("← Mixer");
     powerButton.setTooltip (powerButton.getToggleState() ? tr ("ACTIVE") : tr ("BYPASS"));
     if (moduleInfoCard != nullptr)
         moduleInfoCard->updateLocalizedText();
@@ -234,8 +323,76 @@ void PluginEditor::updateLocalizedStrings()
 
 void PluginEditor::resized()
 {
+    if (isStandaloneMode && isStandaloneMixerViewActive && standaloneMixer != nullptr)
+    {
+        standaloneMixer->setVisible (true);
+        standaloneMixer->setBounds (getLocalBounds());
+        
+        sidebar.setVisible (false);
+        leftSplitter.setVisible (false);
+        canvasContainer.setVisible (false);
+        inspector.setVisible (false);
+        rightSplitter.setVisible (false);
+        minimap.setVisible (false);
+        oscilloscopeHud.setVisible (false);
+        powerButton.setVisible (false);
+        prevPresetBtn.setVisible (false);
+        nextPresetBtn.setVisible (false);
+        presetBox.setVisible (false);
+        loadPresetBtn.setVisible (false);
+        savePresetBtn.setVisible (false);
+        saveAsPresetBtn.setVisible (false);
+        undoBtn.setVisible (false);
+        redoBtn.setVisible (false);
+        settingsBtn.setVisible (false);
+        zoomInBtn.setVisible (false);
+        zoomOutBtn.setVisible (false);
+        snapToggleBtn.setVisible (false);
+        for (int i = 0; i < 4; ++i) macroKnobs[i].setVisible (false);
+        backToMixerBtn.setVisible (false);
+        dspChainTitleLabel.setVisible (false);
+        return;
+    }
+
+    if (standaloneMixer != nullptr)
+        standaloneMixer->setVisible (false);
+
+    sidebar.setVisible (true);
+    canvasContainer.setVisible (true);
+    powerButton.setVisible (true);
+    prevPresetBtn.setVisible (true);
+    nextPresetBtn.setVisible (true);
+    presetBox.setVisible (true);
+    loadPresetBtn.setVisible (true);
+    savePresetBtn.setVisible (true);
+    saveAsPresetBtn.setVisible (true);
+    undoBtn.setVisible (true);
+    redoBtn.setVisible (true);
+    settingsBtn.setVisible (true);
+    zoomInBtn.setVisible (true);
+    zoomOutBtn.setVisible (true);
+    snapToggleBtn.setVisible (true);
+    for (int i = 0; i < 4; ++i) macroKnobs[i].setVisible (true);
+
     topBarBounds = getLocalBounds().removeFromTop (topBarHeight);
     auto bar = topBarBounds.reduced (12, 8);
+
+    if (isStandaloneMode)
+    {
+        backToMixerBtn.setVisible (true);
+        backToMixerBtn.setBounds (bar.removeFromLeft (86).reduced (0, 2));
+        bar.removeFromLeft (10);
+
+        dspChainTitleLabel.setVisible (true);
+        dspChainTitleLabel.setBounds (bar.removeFromLeft (180).reduced (0, 2));
+        bar.removeFromLeft (12);
+        updateDspChainTitle();
+    }
+    else
+    {
+        backToMixerBtn.setVisible (false);
+        dspChainTitleLabel.setVisible (false);
+    }
 
     // -- left section: power button | preset navigation -----------------------
     powerButton.setBounds (bar.removeFromLeft (30).reduced (1, 1));
@@ -352,6 +509,9 @@ void PluginEditor::resized()
 
 void PluginEditor::paint (juce::Graphics& g)
 {
+    if (isStandaloneMode && isStandaloneMixerViewActive)
+        return;
+
     g.fillAll (UITheme::bgCanvas); // macOS Dark Canvas Base
 
     // -- Top bar (macOS Unified Toolbar) -----------------------------------
@@ -895,4 +1055,12 @@ bool PluginEditor::keyPressed (const juce::KeyPress& key)
     }
 
     return AudioProcessorEditor::keyPressed (key);
+}
+
+void PluginEditor::updateDspChainTitle()
+{
+    const juce::String tabNames[4] = { "MIC 1", "DESKTOP", "AUX 3", "AUX 4" };
+    int idx = processor.getActiveChannelIndex();
+    juce::String name = (idx >= 0 && idx < 4) ? tabNames[idx] : "CHANNEL " + juce::String (idx + 1);
+    dspChainTitleLabel.setText (name + "  —  DSP CHAIN", juce::dontSendNotification);
 }

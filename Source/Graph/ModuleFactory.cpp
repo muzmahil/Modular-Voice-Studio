@@ -28,6 +28,11 @@
 #include "../Modules/ThreeBandEQModule.h"
 #include "../Modules/Spatial3DModule.h"
 #include "../Modules/ContainerModule.h"
+#include "../Modules/PitchShiftModule.h"
+#include "../Modules/ReverbModule.h"
+#include "../Modules/DelayModule.h"
+#include "../Modules/RobotVoiceModule.h"
+#include "../Modules/VSTPluginModule.h"
 
 ModuleFactory &ModuleFactory::instance()
 {
@@ -85,7 +90,15 @@ ModuleFactory::ModuleFactory()
     registerType("De-reverb", "Cleanup", "Room Ambience Removal", []
                  { return std::make_unique<DereverbModule>(); });
 
-    // Vocal Tone (Radio Tone)
+    // Vocal Tone & Creative Effects
+    registerType("Pitch Shifter", "Vocal Tone", "Real-Time Pitch & Formant Voice Shifter (±12 Semitones)", []
+                 { return std::make_unique<PitchShiftModule>(); });
+    registerType("Reverb", "Vocal Tone", "Pro Studio Acoustic Vocal Reverb (Room / Plate / Hall)", []
+                 { return std::make_unique<ReverbModule>(); });
+    registerType("Delay", "Vocal Tone", "Stereo Ping-Pong & Vocal Echo Delay", []
+                 { return std::make_unique<DelayModule>(); });
+    registerType("Robot Voice", "Vocal Tone", "Sci-Fi / Robotic / Ring Modulation / Digital Crush", []
+                 { return std::make_unique<RobotVoiceModule>(); });
     registerType("Vocal Doubler", "Vocal Tone", "Stereo Spread & Double Track", []
                  { return std::make_unique<VocalDoublerModule>(); });
     registerType("Aural Exciter", "Vocal Tone", "Air & High Presence", []
@@ -102,6 +115,10 @@ ModuleFactory::ModuleFactory()
                  { return std::make_unique<SaturationModule>(); });
     registerType("Spatial 3D", "Vocal Tone", "3D Binaural Acoustic Realm & Multi-Band Panner", []
                  { return std::make_unique<Spatial3DModule>(); });
+
+    // External Plugins
+    registerType("VST3 Host", "External FX", "Load External VST3 / VST Audio Effect Plugins", []
+                 { return std::make_unique<VSTPluginModule>(); });
 }
 
 void ModuleFactory::registerType(const juce::String &typeId, const juce::String &category, const juce::String &description, Creator creator)
@@ -115,17 +132,50 @@ std::unique_ptr<ModuleProcessor> ModuleFactory::create(const juce::String &typeI
         if (e.typeId.equalsIgnoreCase (typeId))
             return e.creator();
 
-    // Fallback alias
-    if (typeId.equalsIgnoreCase ("Dereverb") || typeId.equalsIgnoreCase ("De-reverb"))
-        return std::make_unique<DereverbModule>();
-    if (typeId.equalsIgnoreCase ("Crossover Splitter") || typeId.equalsIgnoreCase ("Frequency Splitter") || typeId.equalsIgnoreCase ("Crossover"))
-        return std::make_unique<CrossoverSplitterModule>();
-    if (typeId.equalsIgnoreCase ("Crossover Joiner") || typeId.equalsIgnoreCase ("Frequency Joiner") || typeId.equalsIgnoreCase ("Joiner") || typeId.equalsIgnoreCase ("Combiner"))
-        return std::make_unique<CrossoverJoinerModule>();
-    if (typeId.equalsIgnoreCase ("3-Band EQ") || typeId.equalsIgnoreCase ("3 Band EQ") || typeId.equalsIgnoreCase ("ThreeBandEQ") || typeId.equalsIgnoreCase ("Three-Band EQ"))
-        return std::make_unique<ThreeBandEQModule>();
-    if (typeId.equalsIgnoreCase ("Spatial 3D") || typeId.equalsIgnoreCase ("3D Spatializer") || typeId.equalsIgnoreCase ("Spatial Realm") || typeId.equalsIgnoreCase ("Spatial3D") || typeId.equalsIgnoreCase ("Spatial"))
-        return std::make_unique<Spatial3DModule>();
+    juce::String lower = typeId.toLowerCase().trim();
+
+    // Creative & Tone
+    if (lower.contains ("pitch") || lower.contains ("octav") || lower.contains ("harmoniz")) return std::make_unique<PitchShiftModule>();
+    if (lower.contains ("reverb") && !lower.contains ("de")) return std::make_unique<ReverbModule>();
+    if (lower.contains ("delay") || lower.contains ("echo")) return std::make_unique<DelayModule>();
+    if (lower.contains ("robot") || lower.contains ("ring mod") || lower.contains ("crush")) return std::make_unique<RobotVoiceModule>();
+    if (lower.contains ("double") || lower.contains ("chorus")) return std::make_unique<VocalDoublerModule>();
+    if (lower.contains ("saturat") || lower.contains ("tape") || lower.contains ("tube") || lower.contains ("drive") || lower.contains ("warmth")) return std::make_unique<SaturationModule>();
+    if (lower.contains ("spatial") || lower.contains ("3d") || lower.contains ("binaural")) return std::make_unique<Spatial3DModule>();
+    if (lower.contains ("excit") || lower.contains ("aural")) return std::make_unique<AuralExciterModule>();
+    if (lower.contains ("sub") || lower.contains ("phantom")) return std::make_unique<PhantomSubModule>();
+    if (lower.contains ("morph") || lower.contains ("broadcast")) return std::make_unique<BroadcastMorphModule>();
+    if (lower.contains ("proxim")) return std::make_unique<ProximityModule>();
+    if (lower.contains ("rotator") || lower.contains ("phase")) return std::make_unique<PhaseRotatorModule>();
+
+    // Dynamics
+    if (lower.contains ("upward") || lower.contains ("ott")) return std::make_unique<UpwardCompressorModule>();
+    if (lower.contains ("compress")) return std::make_unique<CompressorModule>();
+    if (lower.contains ("limit")) return std::make_unique<LimiterModule>();
+    if (lower.contains ("gate")) return std::make_unique<GateModule>();
+    if (lower.contains ("agc") || lower.contains ("auto gain")) return std::make_unique<AGCModule>();
+
+    // Frequency
+    if (lower.contains ("3-band") || lower.contains ("3 band") || lower.contains ("three band")) return std::make_unique<ThreeBandEQModule>();
+    if (lower.contains ("parametric") || lower.contains ("eq") || lower.contains ("equaliz")) return std::make_unique<ParametricEQModule>();
+    if (lower.contains ("clarity") || lower.contains ("spectral")) return std::make_unique<SpectralClarityModule>();
+    if (lower.contains ("dynamic eq")) return std::make_unique<DynamicEQModule>();
+    if (lower.contains ("esser") || lower.contains ("de-ess") || lower.contains ("deess")) return std::make_unique<DeEsserModule>();
+    if (lower.contains ("splitter") || lower.contains ("crossover splitter")) return std::make_unique<CrossoverSplitterModule>();
+    if (lower.contains ("joiner") || lower.contains ("crossover joiner")) return std::make_unique<CrossoverJoinerModule>();
+
+    // Cleanup
+    if (lower.contains ("noise") || lower.contains ("denois") || lower.contains ("rnnoise")) return std::make_unique<NoiseSuppressionModule>();
+    if (lower.contains ("breath")) return std::make_unique<DeBreathModule>();
+    if (lower.contains ("plosive") || lower.contains ("pop")) return std::make_unique<DePlosiveModule>();
+    if (lower.contains ("click")) return std::make_unique<DeClickModule>();
+    if (lower.contains ("aec") || lower.contains ("echo cancel")) return std::make_unique<AECModule>();
+    if (lower.contains ("dereverb") || lower.contains ("de-reverb")) return std::make_unique<DereverbModule>();
+
+    // Utility & VST
+    if (lower.contains ("gain") || lower.contains ("volume") || lower.contains ("trim")) return std::make_unique<GainModule>();
+    if (lower.contains ("container")) return std::make_unique<ContainerModule>();
+    if (lower.contains ("vst") || lower.contains ("host")) return std::make_unique<VSTPluginModule>();
 
     return nullptr;
 }

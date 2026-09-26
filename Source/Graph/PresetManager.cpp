@@ -272,7 +272,8 @@ bool PresetManager::loadFromFile (const juce::File& file, PluginProcessor& proce
     juce::MemoryBlock block;
     if (file.loadFileAsData (block))
     {
-        processor.setStateInformation (block.getData(), (int) block.getSize());
+        processor.getActiveChannel().setStateInformation (block.getData(), (int) block.getSize());
+        processor.sendChangeMessage();
         refreshPresets();
         currentPresetIndex = presetNames.indexOf (file.getFileNameWithoutExtension());
         return true;
@@ -283,7 +284,7 @@ bool PresetManager::loadFromFile (const juce::File& file, PluginProcessor& proce
 bool PresetManager::saveToFile (const juce::File& file, PluginProcessor& processor)
 {
     juce::MemoryBlock data;
-    processor.getStateInformation (data);
+    processor.getActiveChannel().getStateInformation (data);
 
     if (file.replaceWithData (data.getData(), data.getSize()))
     {

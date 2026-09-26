@@ -49,38 +49,38 @@ public:
     Spatial3DModule()
         : ModuleProcessor ("Spatial 3D", createLayout())
     {
-        posXParam       = apvts.getRawParameterValue ("posX");
-        posYParam       = apvts.getRawParameterValue ("posY");
-        posZParam       = apvts.getRawParameterValue ("posZ");
-        sourceSizeParam = apvts.getRawParameterValue ("sourceSize");
-        coneAngleParam  = apvts.getRawParameterValue ("coneAngle");
-        modeParam       = apvts.getRawParameterValue ("mode");
+        posXParam       = getModuleParam ("posX", 0.0f);
+        posYParam       = getModuleParam ("posY", 1.0f);
+        posZParam       = getModuleParam ("posZ", 0.0f);
+        sourceSizeParam = getModuleParam ("sourceSize", 0.20f);
+        coneAngleParam  = getModuleParam ("coneAngle", 360.0f);
+        modeParam       = getModuleParam ("mode", 0.0f);
         
         // Multi-band positions
-        lowXParam       = apvts.getRawParameterValue ("lowX");
-        lowYParam       = apvts.getRawParameterValue ("lowY");
-        lowZParam       = apvts.getRawParameterValue ("lowZ");
-        midXParam       = apvts.getRawParameterValue ("midX");
-        midYParam       = apvts.getRawParameterValue ("midY");
-        midZParam       = apvts.getRawParameterValue ("midZ");
-        highXParam      = apvts.getRawParameterValue ("highX");
-        highYParam      = apvts.getRawParameterValue ("highY");
-        highZParam      = apvts.getRawParameterValue ("highZ");
+        lowXParam       = getModuleParam ("lowX", 0.0f);
+        lowYParam       = getModuleParam ("lowY", 0.7f);
+        lowZParam       = getModuleParam ("lowZ", -0.5f);
+        midXParam       = getModuleParam ("midX", 0.0f);
+        midYParam       = getModuleParam ("midY", 1.0f);
+        midZParam       = getModuleParam ("midZ", 0.0f);
+        highXParam      = getModuleParam ("highX", 0.0f);
+        highYParam      = getModuleParam ("highY", 1.0f);
+        highZParam      = getModuleParam ("highZ", 0.5f);
 
         // Room parameters
-        roomWidthParam  = apvts.getRawParameterValue ("roomWidth");
-        roomDepthParam  = apvts.getRawParameterValue ("roomDepth");
-        roomHeightParam = apvts.getRawParameterValue ("roomHeight");
-        reflectAmtParam = apvts.getRawParameterValue ("reflectAmt");
-        wallAbsorbParam = apvts.getRawParameterValue ("wallAbsorb");
-        reverbDecayParam= apvts.getRawParameterValue ("reverbDecay");
-        airDampingParam = apvts.getRawParameterValue ("airDamping");
+        roomWidthParam  = getModuleParam ("roomWidth", 8.0f);
+        roomDepthParam  = getModuleParam ("roomDepth", 10.0f);
+        roomHeightParam = getModuleParam ("roomHeight", 3.5f);
+        reflectAmtParam = getModuleParam ("reflectAmt", 0.25f);
+        wallAbsorbParam = getModuleParam ("wallAbsorb", 0.35f);
+        reverbDecayParam= getModuleParam ("reverbDecay", 1.2f);
+        airDampingParam = getModuleParam ("airDamping", 0.40f);
 
         // Motion parameters
-        motionPatParam  = apvts.getRawParameterValue ("motionPattern");
-        motionSpeedParam= apvts.getRawParameterValue ("motionSpeed");
-        orbitRadiusParam= apvts.getRawParameterValue ("orbitRadius");
-        dopplerParam    = apvts.getRawParameterValue ("doppler");
+        motionPatParam  = getModuleParam ("motionPattern", 0.0f);
+        motionSpeedParam= getModuleParam ("motionSpeed", 0.20f);
+        orbitRadiusParam= getModuleParam ("orbitRadius", 0.95f);
+        dopplerParam    = getModuleParam ("doppler", 1.0f);
 
         initFilters();
     }
@@ -109,16 +109,16 @@ public:
         if (numChannels == 0 || numSamples == 0) return;
 
         // Fetch primary parameters
-        float pX = posXParam ? posXParam->load() : 0.0f;
-        float pY = posYParam ? posYParam->load() : 1.0f;
-        float pZ = posZParam ? posZParam->load() : 0.0f;
-        int mode = modeParam ? (int) modeParam->load() : 0;
-        int motion = motionPatParam ? (int) motionPatParam->load() : 0;
-        float speed = motionSpeedParam ? motionSpeedParam->load() : 0.25f;
-        float radius = orbitRadiusParam ? orbitRadiusParam->load() : 1.0f;
-        float reflectAmt = reflectAmtParam ? reflectAmtParam->load() : 0.25f;
-        float wallAbsorb = wallAbsorbParam ? wallAbsorbParam->load() : 0.30f;
-        float airDamping = airDampingParam ? airDampingParam->load() : 0.50f;
+        float pX = posXParam.get (0.0f);
+        float pY = posYParam.get (1.0f);
+        float pZ = posZParam.get (0.0f);
+        int mode = (int) modeParam.get (0.0f);
+        int motion = (int) motionPatParam.get (0.0f);
+        float speed = motionSpeedParam.get (0.25f);
+        float radius = orbitRadiusParam.get (1.0f);
+        float reflectAmt = reflectAmtParam.get (0.25f);
+        float wallAbsorb = wallAbsorbParam.get (0.30f);
+        float airDamping = airDampingParam.get (0.50f);
 
         // Advance 3D motion phase
         if (motion > 0)
@@ -173,17 +173,17 @@ public:
 
         if (mode == 2) // Multi-Band Spatial Splitting
         {
-            float lX = lowXParam  ? lowXParam->load()  : 0.0f;
-            float lY = lowYParam  ? lowYParam->load()  : 0.8f;
-            float lZ = lowZParam  ? lowZParam->load()  : -0.5f;
+            float lX = lowXParam.get (0.0f);
+            float lY = lowYParam.get (0.8f);
+            float lZ = lowZParam.get (-0.5f);
 
-            float mX = midXParam  ? midXParam->load()  : pX;
-            float mY = midYParam  ? midYParam->load()  : pY;
-            float mZ = midZParam  ? midZParam->load()  : pZ;
+            float mX = midXParam.get (pX);
+            float mY = midYParam.get (pY);
+            float mZ = midZParam.get (pZ);
 
-            float hX = highXParam ? highXParam->load() : -pX;
-            float hY = highYParam ? highYParam->load() : pY;
-            float hZ = highZParam ? highZParam->load() : (pZ + 0.4f);
+            float hX = highXParam.get (-pX);
+            float hY = highYParam.get (pY);
+            float hZ = highZParam.get (pZ + 0.4f);
 
             for (int i = 0; i < numSamples; ++i)
             {
@@ -290,35 +290,35 @@ public:
     EmitterPos getCurrentEmitterPos() const { return currentEmitterPos; }
 
 private:
-    std::atomic<float>* posXParam = nullptr;
-    std::atomic<float>* posYParam = nullptr;
-    std::atomic<float>* posZParam = nullptr;
-    std::atomic<float>* sourceSizeParam = nullptr;
-    std::atomic<float>* coneAngleParam = nullptr;
-    std::atomic<float>* modeParam = nullptr;
+    ParamRef posXParam;
+    ParamRef posYParam;
+    ParamRef posZParam;
+    ParamRef sourceSizeParam;
+    ParamRef coneAngleParam;
+    ParamRef modeParam;
 
-    std::atomic<float>* lowXParam = nullptr;
-    std::atomic<float>* lowYParam = nullptr;
-    std::atomic<float>* lowZParam = nullptr;
-    std::atomic<float>* midXParam = nullptr;
-    std::atomic<float>* midYParam = nullptr;
-    std::atomic<float>* midZParam = nullptr;
-    std::atomic<float>* highXParam = nullptr;
-    std::atomic<float>* highYParam = nullptr;
-    std::atomic<float>* highZParam = nullptr;
+    ParamRef lowXParam;
+    ParamRef lowYParam;
+    ParamRef lowZParam;
+    ParamRef midXParam;
+    ParamRef midYParam;
+    ParamRef midZParam;
+    ParamRef highXParam;
+    ParamRef highYParam;
+    ParamRef highZParam;
 
-    std::atomic<float>* roomWidthParam = nullptr;
-    std::atomic<float>* roomDepthParam = nullptr;
-    std::atomic<float>* roomHeightParam = nullptr;
-    std::atomic<float>* reflectAmtParam = nullptr;
-    std::atomic<float>* wallAbsorbParam = nullptr;
-    std::atomic<float>* reverbDecayParam = nullptr;
-    std::atomic<float>* airDampingParam = nullptr;
+    ParamRef roomWidthParam;
+    ParamRef roomDepthParam;
+    ParamRef roomHeightParam;
+    ParamRef reflectAmtParam;
+    ParamRef wallAbsorbParam;
+    ParamRef reverbDecayParam;
+    ParamRef airDampingParam;
 
-    std::atomic<float>* motionPatParam = nullptr;
-    std::atomic<float>* motionSpeedParam = nullptr;
-    std::atomic<float>* orbitRadiusParam = nullptr;
-    std::atomic<float>* dopplerParam = nullptr;
+    ParamRef motionPatParam;
+    ParamRef motionSpeedParam;
+    ParamRef orbitRadiusParam;
+    ParamRef dopplerParam;
 
     double sampleRate = 44100.0;
     std::atomic<float> liveLevel { 0.0f };
@@ -462,9 +462,9 @@ private:
     // -------------------------------------------------------------------------
     inline void renderEarlyReflections (float sample, float x, float y, float z, float wallAbsorb, float& refL, float& refR)
     {
-        float rW = roomWidthParam  ? roomWidthParam->load()  : 6.0f;
-        float rD = roomDepthParam  ? roomDepthParam->load()  : 8.0f;
-        float rH = roomHeightParam ? roomHeightParam->load() : 3.5f;
+        float rW = roomWidthParam.get (6.0f);
+        float rD = roomDepthParam.get (8.0f);
+        float rH = roomHeightParam.get (3.5f);
 
         // 6 Wall reflection image distances (Left, Right, Front, Back, Floor, Ceiling)
         float dLeft   = std::sqrt (std::pow (2.0f * (rW * 0.5f) + x, 2.0f) + y*y + z*z);
@@ -924,7 +924,7 @@ public:
 
         // 5. Fetch Emitters and Draw
         auto curPos = module.getCurrentEmitterPos();
-        int mode = apvts.getRawParameterValue ("mode") ? (int) apvts.getRawParameterValue ("mode")->load() : 0;
+        int mode = (int) module.getParamValue ("mode", 0.0f);
 
         auto drawEmitter = [&] (float ex, float ey, float ez, const juce::String& name, juce::Colour col, bool isSelected)
         {
@@ -980,17 +980,17 @@ public:
 
         if (mode == 2) // Multi-Band Spatial
         {
-            float lx = apvts.getRawParameterValue ("lowX")  ? apvts.getRawParameterValue ("lowX")->load()  : 0.0f;
-            float ly = apvts.getRawParameterValue ("lowY")  ? apvts.getRawParameterValue ("lowY")->load()  : 0.8f;
-            float lz = apvts.getRawParameterValue ("lowZ")  ? apvts.getRawParameterValue ("lowZ")->load()  : -0.5f;
+            float lx = module.getParamValue ("lowX", 0.0f);
+            float ly = module.getParamValue ("lowY", 0.8f);
+            float lz = module.getParamValue ("lowZ", -0.5f);
 
             float mx = curPos.x;
             float my = curPos.y;
             float mz = curPos.z;
 
-            float hx = apvts.getRawParameterValue ("highX") ? apvts.getRawParameterValue ("highX")->load() : -curPos.x;
-            float hy = apvts.getRawParameterValue ("highY") ? apvts.getRawParameterValue ("highY")->load() : curPos.y;
-            float hz = apvts.getRawParameterValue ("highZ") ? apvts.getRawParameterValue ("highZ")->load() : (curPos.z + 0.4f);
+            float hx = module.getParamValue ("highX", -curPos.x);
+            float hy = module.getParamValue ("highY", curPos.y);
+            float hz = module.getParamValue ("highZ", curPos.z + 0.4f);
 
             drawEmitter (lx, ly, lz, "LOW",  UITheme::applePurple, selectedBand == 0);
             drawEmitter (mx, my, mz, "MID",  UITheme::appleGreen,  selectedBand == 1);
@@ -1018,7 +1018,7 @@ public:
 
         if (!isDraggingCamera)
         {
-            int mode = apvts.getRawParameterValue ("mode") ? (int) apvts.getRawParameterValue ("mode")->load() : 0;
+            int mode = (int) module.getParamValue ("mode", 0.0f);
             if (mode == 2)
             {
                 // Hit-test band emitters to decide which one to drag
@@ -1045,16 +1045,16 @@ public:
                     return juce::Point<float> (cx + x1 * scale3D * fov, cy - z2 * scale3D * fov);
                 };
 
-                float lx = apvts.getRawParameterValue ("lowX")  ? apvts.getRawParameterValue ("lowX")->load()  : 0.0f;
-                float ly = apvts.getRawParameterValue ("lowY")  ? apvts.getRawParameterValue ("lowY")->load()  : 0.8f;
-                float lz = apvts.getRawParameterValue ("lowZ")  ? apvts.getRawParameterValue ("lowZ")->load()  : -0.5f;
+                float lx = module.getParamValue ("lowX", 0.0f);
+                float ly = module.getParamValue ("lowY", 0.8f);
+                float lz = module.getParamValue ("lowZ", -0.5f);
 
                 auto curPos = module.getCurrentEmitterPos();
                 float mx = curPos.x, my = curPos.y, mz = curPos.z;
 
-                float hx = apvts.getRawParameterValue ("highX") ? apvts.getRawParameterValue ("highX")->load() : -curPos.x;
-                float hy = apvts.getRawParameterValue ("highY") ? apvts.getRawParameterValue ("highY")->load() : curPos.y;
-                float hz = apvts.getRawParameterValue ("highZ") ? apvts.getRawParameterValue ("highZ")->load() : (curPos.z + 0.4f);
+                float hx = module.getParamValue ("highX", -curPos.x);
+                float hy = module.getParamValue ("highY", curPos.y);
+                float hz = module.getParamValue ("highZ", curPos.z + 0.4f);
 
                 auto pL = projectPt (lx, ly, lz);
                 auto pM = projectPt (mx, my, mz);
@@ -1086,28 +1086,28 @@ public:
         }
         else // Drag selected emitter
         {
-            int mode = apvts.getRawParameterValue ("mode") ? (int) apvts.getRawParameterValue ("mode")->load() : 0;
+            int mode = (int) module.getParamValue ("mode", 0.0f);
             juce::RangedAudioParameter* pX = nullptr;
             juce::RangedAudioParameter* pY = nullptr;
             juce::RangedAudioParameter* pZ = nullptr;
 
             if (mode == 2 && selectedBand == 0)
             {
-                pX = apvts.getParameter ("lowX");
-                pY = apvts.getParameter ("lowY");
-                pZ = apvts.getParameter ("lowZ");
+                pX = module.getRangedParam ("lowX");
+                pY = module.getRangedParam ("lowY");
+                pZ = module.getRangedParam ("lowZ");
             }
             else if (mode == 2 && selectedBand == 2)
             {
-                pX = apvts.getParameter ("highX");
-                pY = apvts.getParameter ("highY");
-                pZ = apvts.getParameter ("highZ");
+                pX = module.getRangedParam ("highX");
+                pY = module.getRangedParam ("highY");
+                pZ = module.getRangedParam ("highZ");
             }
             else
             {
-                pX = apvts.getParameter ("posX");
-                pY = apvts.getParameter ("posY");
-                pZ = apvts.getParameter ("posZ");
+                pX = module.getRangedParam ("posX");
+                pY = module.getRangedParam ("posY");
+                pZ = module.getRangedParam ("posZ");
             }
 
             if (e.mods.isShiftDown()) // Shift + Drag = Height (Z)

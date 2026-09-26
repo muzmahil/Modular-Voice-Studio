@@ -13,9 +13,9 @@ public:
     PhaseRotatorModule()
         : ModuleProcessor ("Phase Rotator", createLayout())
     {
-        freqParam   = apvts.getRawParameterValue ("frequency");
-        stagesParam = apvts.getRawParameterValue ("stages");
-        mixParam    = apvts.getRawParameterValue ("mix");
+        freqParam   = getModuleParam ("frequency", 280.0f);
+        stagesParam = getModuleParam ("stages", 4.0f);
+        mixParam    = getModuleParam ("mix", 100.0f);
     }
 
     void prepareToPlay (double sr, int) override
@@ -32,9 +32,9 @@ public:
         const int numSamples  = buffer.getNumSamples();
         if (numChannels == 0 || numSamples == 0) return;
 
-        float fc = juce::jlimit (80.0f, 1200.0f, freqParam->load());
-        int numStages = juce::jlimit (2, maxStages, (int) stagesParam->load());
-        float mixNorm = juce::jlimit (0.0f, 1.0f, mixParam->load() * 0.01f);
+        float fc = juce::jlimit (80.0f, 1200.0f, freqParam.get (280.0f));
+        int numStages = juce::jlimit (2, maxStages, (int) stagesParam.get (4.0f));
+        float mixNorm = juce::jlimit (0.0f, 1.0f, mixParam.get (100.0f) * 0.01f);
 
         // 1st-order allpass coefficient: a = (tan(pi * fc / fs) - 1) / (tan(pi * fc / fs) + 1)
         float w0 = juce::MathConstants<float>::pi * (fc / (float) sampleRate);
@@ -92,7 +92,7 @@ public:
     float getLivePosPeak() const       { return livePosPeak.load (std::memory_order_relaxed); }
     float getLiveNegPeak() const       { return liveNegPeak.load (std::memory_order_relaxed); }
     float getLiveHeadroomGained() const{ return liveHeadroomGained.load (std::memory_order_relaxed); }
-    float getFrequency() const         { return freqParam ? freqParam->load() : 280.0f; }
+    float getFrequency() const         { return freqParam.get (280.0f); }
 
 private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createLayout()
@@ -121,9 +121,9 @@ private:
                 apX1[ch][st] = apY1[ch][st] = 0.0f;
     }
 
-    std::atomic<float>* freqParam   = nullptr;
-    std::atomic<float>* stagesParam = nullptr;
-    std::atomic<float>* mixParam    = nullptr;
+    ParamRef freqParam;
+    ParamRef stagesParam;
+    ParamRef mixParam;
 
     double sampleRate = 44100.0;
     float apX1[2][maxStages] = {};

@@ -20,11 +20,11 @@ public:
     PhantomSubModule()
         : ModuleProcessor ("Phantom Sub", createLayout())
     {
-        amountParam    = apvts.getRawParameterValue ("amount");
-        freqParam      = apvts.getRawParameterValue ("freq");
-        warmthParam    = apvts.getRawParameterValue ("warmth");
-        lowCutParam    = apvts.getRawParameterValue ("lowCut");
-        autoTrackParam = apvts.getRawParameterValue ("autoTrack");
+        amountParam    = getModuleParam ("amount", 45.0f);
+        freqParam      = getModuleParam ("freq", 90.0f);
+        warmthParam    = getModuleParam ("warmth", 40.0f);
+        lowCutParam    = getModuleParam ("lowCut", 80.0f);
+        autoTrackParam = getModuleParam ("autoTrack", 1.0f);
 
         for (int i = 0; i < historyLength; ++i)
             history[i] = { 0.0f, 0.0f };
@@ -51,11 +51,11 @@ public:
         const int numSamples  = buffer.getNumSamples();
         if (numChannels == 0 || numSamples == 0) return;
 
-        float subAmountNorm = juce::jlimit (0.0f, 1.0f, amountParam->load() * 0.01f);
-        float manualFreq    = juce::jlimit (50.0f, 160.0f, freqParam->load());
-        float warmthNorm    = juce::jlimit (0.0f, 1.0f, warmthParam->load() * 0.01f);
-        float lowCutFreq    = juce::jlimit (20.0f, 180.0f, lowCutParam->load());
-        bool autoTrack      = autoTrackParam->load() > 0.5f;
+        float subAmountNorm = juce::jlimit (0.0f, 1.0f, amountParam.get (45.0f) * 0.01f);
+        float manualFreq    = juce::jlimit (50.0f, 160.0f, freqParam.get (90.0f));
+        float warmthNorm    = juce::jlimit (0.0f, 1.0f, warmthParam.get (40.0f) * 0.01f);
+        float lowCutFreq    = juce::jlimit (20.0f, 180.0f, lowCutParam.get (80.0f));
+        bool autoTrack      = autoTrackParam.get (1.0f) > 0.5f;
 
         updateLowCutCoeffs (lowCutFreq);
         updateBandpassCoeffs (350.0f, 1.2f);
@@ -186,8 +186,8 @@ public:
     float getLiveSubLevel() const    { return liveSubLevel.load (std::memory_order_relaxed); }
     float getLiveDryLevel() const    { return liveDryLevel.load (std::memory_order_relaxed); }
     float getTrackedPitch() const    { return liveTrackedPitch.load (std::memory_order_relaxed); }
-    float getTargetFreq() const      { return freqParam ? freqParam->load() : 90.0f; }
-    bool  isAutoTrackEnabled() const { return autoTrackParam && autoTrackParam->load() > 0.5f; }
+    float getTargetFreq() const      { return freqParam.get (90.0f); }
+    bool  isAutoTrackEnabled() const { return autoTrackParam.get (1.0f) > 0.5f; }
 
     void getWaveHistory (std::vector<WavePoint>& dest) const
     {
@@ -272,11 +272,11 @@ private:
         lcA2 = (1.0f - alpha) / a0;
     }
 
-    std::atomic<float>* amountParam    = nullptr;
-    std::atomic<float>* freqParam      = nullptr;
-    std::atomic<float>* warmthParam    = nullptr;
-    std::atomic<float>* lowCutParam    = nullptr;
-    std::atomic<float>* autoTrackParam = nullptr;
+    ParamRef amountParam;
+    ParamRef freqParam;
+    ParamRef warmthParam;
+    ParamRef lowCutParam;
+    ParamRef autoTrackParam;
 
     double sampleRate = 44100.0;
 

@@ -1,0 +1,667 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="ModularVoiceStudio.App.MainWindow"
+        Title="Modular Voice Studio"
+        Width="780"
+        Height="530"
+        CanResize="False"
+        SystemDecorations="None"
+        WindowStartupLocation="CenterScreen"
+        Icon="Assets/icon.ico"
+        Background="#181818"
+        Foreground="#E0E0E0">
+
+    <!-- Styles for Neutral Dark Grey Theme, Custom Fader Thumbs & Centered Buttons -->
+    <Window.Styles>
+        <Style Selector="ComboBox">
+            <Setter Property="Background" Value="#252525" />
+            <Setter Property="BorderBrush" Value="#383838" />
+            <Setter Property="Foreground" Value="#EEEEEE" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="3" />
+        </Style>
+
+        <!-- Global Base Button & ToggleButton Centering -->
+        <Style Selector="Button">
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="ToggleButton">
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+
+        <!-- Hardware Pushbutton Styles (Vertically & Horizontally Centered) -->
+        <Style Selector="ToggleButton.rc-toggle">
+            <Setter Property="Background" Value="#252525" />
+            <Setter Property="BorderBrush" Value="#3D3D3D" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="Foreground" Value="#B0B0B0" />
+            <Setter Property="FontWeight" Value="Bold" />
+        </Style>
+        <Style Selector="ToggleButton.rc-toggle:checked">
+            <Setter Property="Background" Value="#991B1B" />
+            <Setter Property="BorderBrush" Value="#DC2626" />
+            <Setter Property="Foreground" Value="#FFFFFF" />
+        </Style>
+
+        <!-- Monitor ToggleButton (Amber Latch) -->
+        <Style Selector="ToggleButton.rc-toggle-mon">
+            <Setter Property="Background" Value="#252525" />
+            <Setter Property="BorderBrush" Value="#3D3D3D" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="Foreground" Value="#888888" />
+            <Setter Property="FontWeight" Value="Bold" />
+        </Style>
+        <Style Selector="ToggleButton.rc-toggle-mon:checked">
+            <Setter Property="Background" Value="#452408" />
+            <Setter Property="BorderBrush" Value="#F59E0B" />
+            <Setter Property="Foreground" Value="#FDE68A" />
+        </Style>
+
+        <!-- Custom Studio Fader Styling: Continuous Visible Hardware Track Groove + Clean Cap -->
+        <Style Selector="Slider /template/ RepeatButton">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Background="Transparent" />
+                </ControlTemplate>
+            </Setter>
+        </Style>
+
+        <Style Selector="Slider:horizontal">
+            <Setter Property="MinHeight" Value="34" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Grid VerticalAlignment="Center">
+                        <!-- Continuous Visible Hardware Track Groove -->
+                        <Border Height="5" Background="#111111" BorderBrush="#353535" BorderThickness="1" CornerRadius="2.5" Margin="7,0" VerticalAlignment="Center" />
+                        <Track Name="PART_Track"
+                               Orientation="Horizontal"
+                               Minimum="{TemplateBinding Minimum}"
+                               Maximum="{TemplateBinding Maximum}"
+                               Value="{TemplateBinding Value, Mode=TwoWay}"
+                               IsDirectionReversed="{TemplateBinding IsDirectionReversed}">
+                            <Track.DecreaseButton>
+                                <RepeatButton Name="PART_DecreaseButton" Focusable="False" IsTabStop="False">
+                                    <RepeatButton.Template>
+                                        <ControlTemplate><Border Background="Transparent" /></ControlTemplate>
+                                    </RepeatButton.Template>
+                                </RepeatButton>
+                            </Track.DecreaseButton>
+                            <Track.IncreaseButton>
+                                <RepeatButton Name="PART_IncreaseButton" Focusable="False" IsTabStop="False">
+                                    <RepeatButton.Template>
+                                        <ControlTemplate><Border Background="Transparent" /></ControlTemplate>
+                                    </RepeatButton.Template>
+                                </RepeatButton>
+                            </Track.IncreaseButton>
+                            <Thumb Name="PART_Thumb" Width="14" Height="26" Cursor="SizeWestEast">
+                                <Thumb.Template>
+                                    <ControlTemplate>
+                                        <Border Name="FaderCapBorder" Background="#383838" BorderBrush="#777777" BorderThickness="1.5" CornerRadius="3" BoxShadow="0 2 4 0 #60000000">
+                                            <Rectangle Width="2" Height="14" Fill="#E0E0E0" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                    </ControlTemplate>
+                                </Thumb.Template>
+                            </Thumb>
+                        </Track>
+                    </Grid>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+
+        <Style Selector="Slider:vertical">
+            <Setter Property="MinWidth" Value="34" />
+            <Setter Property="Width" Value="34" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Grid HorizontalAlignment="Center">
+                        <!-- Continuous Visible Hardware Track Groove -->
+                        <Border Width="5" Background="#111111" BorderBrush="#353535" BorderThickness="1" CornerRadius="2.5" Margin="0,7" HorizontalAlignment="Center" />
+                        <Track Name="PART_Track"
+                               Orientation="Vertical"
+                               Minimum="{TemplateBinding Minimum}"
+                               Maximum="{TemplateBinding Maximum}"
+                               Value="{TemplateBinding Value, Mode=TwoWay}"
+                               IsDirectionReversed="{TemplateBinding IsDirectionReversed}">
+                            <Track.DecreaseButton>
+                                <RepeatButton Name="PART_DecreaseButton" Focusable="False" IsTabStop="False">
+                                    <RepeatButton.Template>
+                                        <ControlTemplate><Border Background="Transparent" /></ControlTemplate>
+                                    </RepeatButton.Template>
+                                </RepeatButton>
+                            </Track.DecreaseButton>
+                            <Track.IncreaseButton>
+                                <RepeatButton Name="PART_IncreaseButton" Focusable="False" IsTabStop="False">
+                                    <RepeatButton.Template>
+                                        <ControlTemplate><Border Background="Transparent" /></ControlTemplate>
+                                    </RepeatButton.Template>
+                                </RepeatButton>
+                            </Track.IncreaseButton>
+                            <Thumb Name="PART_Thumb" Width="28" Height="14" Cursor="SizeNorthSouth">
+                                <Thumb.Template>
+                                    <ControlTemplate>
+                                        <Border Name="FaderCapBorder" Background="#383838" BorderBrush="#777777" BorderThickness="1.5" CornerRadius="3" BoxShadow="0 2 4 0 #60000000">
+                                            <Rectangle Width="14" Height="2" Fill="#E0E0E0" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                    </ControlTemplate>
+                                </Thumb.Template>
+                            </Thumb>
+                        </Track>
+                    </Grid>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+
+        <Style Selector="Slider /template/ Thumb:pointerover Border#FaderCapBorder">
+            <Setter Property="Background" Value="#4C4C4C" />
+            <Setter Property="BorderBrush" Value="#AAAAAA" />
+        </Style>
+    </Window.Styles>
+
+    <!-- Main Solid Dark Grey Chassis Frame with High-Contrast Outer Border -->
+    <Border BorderBrush="#5C667A" BorderThickness="2" CornerRadius="6" Background="#181818" ClipToBounds="True">
+        <Grid RowDefinitions="46,*,42">
+            
+            <!-- ========================================================================= -->
+            <!-- 1. TOP HEADER                                                             -->
+            <!-- ========================================================================= -->
+            <Border Grid.Row="0"
+                    Background="#242424"
+                    BorderBrush="#333333"
+                    BorderThickness="0,0,0,1.2"
+                    PointerPressed="OnTitleBarPointerPressed">
+                <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto">
+                    
+                    <!-- Left Brand Logo: MVS STANDALONE -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0,0,0">
+                        <TextBlock Text="MVS"
+                                   FontSize="20"
+                                   FontWeight="Black"
+                                   FontFamily="Helvetica, Inter, sans-serif"
+                                   Foreground="#F0F0F0"
+                                   VerticalAlignment="Center" />
+                        <Border Background="#333333" BorderBrush="#444444" BorderThickness="1" CornerRadius="2" Padding="5,1.5" Margin="8,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="STANDALONE" FontSize="7.5" FontWeight="Bold" Foreground="#AAAAAA" />
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Center Preset & DSP Canvas Pill -->
+                    <Border Grid.Column="1"
+                            Background="#1A1A1A"
+                            BorderBrush="#383838"
+                            BorderThickness="1"
+                            CornerRadius="3"
+                            Height="28"
+                            MaxWidth="320"
+                            Margin="12,0"
+                            Padding="8,0"
+                            Cursor="Hand"
+                            ToolTip.Tip="Click to open Modular DSP Canvas"
+                            PointerPressed="OnDspScreenPointerPressed">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                            <TextBlock Grid.Column="0" Text="DSP:" FontSize="8" FontWeight="Bold" Foreground="#888888" VerticalAlignment="Center" Margin="0,0,6,0" />
+                            <TextBlock Grid.Column="1"
+                                       Name="TxtDspNodes"
+                                       Text="Direct Clean Voice -> Modular Output"
+                                       FontSize="9"
+                                       FontWeight="Bold"
+                                       Foreground="#E0E0E0"
+                                       TextTrimming="CharacterEllipsis"
+                                       VerticalAlignment="Center" />
+                            <ToggleButton Grid.Column="2"
+                                          Name="BtnDspBypass"
+                                          Height="18"
+                                          Padding="6,0"
+                                          Background="#14331E"
+                                          BorderBrush="#059669"
+                                          BorderThickness="1"
+                                          CornerRadius="2"
+                                          Margin="6,0,0,0"
+                                          VerticalAlignment="Center"
+                                          IsCheckedChanged="OnDspBypassChanged">
+                                <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                    <Ellipse Name="LedDspBypass" Width="5" Height="5" Fill="#10B981" VerticalAlignment="Center" />
+                                    <TextBlock Name="TxtDspBypass" Text="ACTIVE" FontSize="7.5" FontWeight="ExtraBold" Foreground="#6EE7B7" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </ToggleButton>
+                        </Grid>
+                    </Border>
+
+                    <!-- Header Effect Chain Launcher Button -->
+                    <Button Grid.Column="2"
+                            Height="26"
+                            Padding="12,0"
+                            Background="#242B38"
+                            Foreground="#60A5FA"
+                            BorderBrush="#3B4961"
+                            BorderThickness="1"
+                            CornerRadius="2"
+                            Margin="0,0,8,0"
+                            VerticalAlignment="Center"
+                            ToolTip.Tip="Open Effect Chain Mixer Console (Pitch, Reverb, VST3s)"
+                            Click="OnOpenEffectChainClicked">
+                        <TextBlock Text="EFFECT CHAIN" FontSize="8.5" FontWeight="Bold" VerticalAlignment="Center" />
+                    </Button>
+
+                    <!-- Menu Button (Native Flyout) -->
+                    <Button Grid.Column="3"
+                            Name="BtnMenu"
+                            Height="26"
+                            Padding="12,0"
+                            Background="#303030"
+                            Foreground="#E0E0E0"
+                            BorderBrush="#444444"
+                            BorderThickness="1"
+                            CornerRadius="3"
+                            Margin="0,0,10,0"
+                            VerticalAlignment="Center">
+                        <TextBlock Text="MENU ▾" FontSize="9.0" FontWeight="Bold" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                        <Button.Flyout>
+                            <MenuFlyout Placement="Bottom">
+                                <MenuItem Header="Open Effect Chain Console..." Click="OnOpenEffectChainClicked" />
+                                <MenuItem Header="Open Modular DSP Canvas..." Click="OnOpenCanvasClicked" />
+                                <Separator Background="#383838" />
+                                <MenuItem Header="Audio Engine &amp; Hardware Settings..." Click="OnAudioSettingsClicked" />
+                                <MenuItem Header="Reset DSP Chain to Blank (Default)" Click="OnResetDspClicked" />
+                                <MenuItem Header="Reset All Faders to 0.0 dB (Unity)" Click="OnResetAllFadersClicked" />
+                                <Separator Background="#383838" />
+                                <MenuItem Header="Minimize to System Tray" Click="OnMinimizeToTrayClicked" />
+                                <MenuItem Header="VB-CABLE Virtual Mic Guide..." Click="OnVBCableGuideClicked" />
+                                <MenuItem Header="About Modular Voice Studio" Click="OnAboutClicked" />
+                                <Separator Background="#383838" />
+                                <MenuItem Header="Exit Application" Click="OnCloseClicked" />
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
+
+                    <!-- Window Min / Close Buttons -->
+                    <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0">
+                        <Button ToolTip.Tip="Minimize to System Tray"
+                                Width="26"
+                                Height="24"
+                                Background="Transparent"
+                                Foreground="#888888"
+                                Click="OnMinimizeClicked">
+                            <TextBlock Text="—" FontSize="11" FontWeight="Bold" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                        </Button>
+                        <Button ToolTip.Tip="Close / Exit"
+                                Width="26"
+                                Height="24"
+                                Background="Transparent"
+                                Foreground="#EF4444"
+                                Click="OnCloseClicked">
+                            <TextBlock Text="✕" FontSize="11" FontWeight="Bold" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- ========================================================================= -->
+            <!-- 2. MAIN BODY (Clean 2 Columns: Mic Preamp | Merged Outputs)               -->
+            <!-- ========================================================================= -->
+            <Grid Grid.Row="1" ColumnDefinitions="250,*" Margin="10,8,10,6">
+                
+                <!-- ===================================================================== -->
+                <!-- COLUMN 1: MIC PREAMP (Vertical Long-Throw Fader)                      -->
+                <!-- ===================================================================== -->
+                <Border Grid.Column="0"
+                        Background="#202020"
+                        BorderBrush="#333333"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Padding="12,10"
+                        Margin="0,0,6,0">
+                    <Grid RowDefinitions="22,6,24,6,28,6,*,6,26,6,Auto">
+                        
+                        <!-- Header Bar -->
+                        <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0" Text="CH 01 • MIC PREAMP" FontSize="10" FontWeight="ExtraBold" Foreground="#EEEEEE" VerticalAlignment="Center" />
+                            <Border Grid.Column="1" Background="#2E2E2E" CornerRadius="2" Padding="5,1" VerticalAlignment="Center">
+                                <TextBlock Text="MONO IN" FontSize="7.5" FontWeight="Bold" Foreground="#888888" />
+                            </Border>
+                        </Grid>
+
+                        <!-- Live Multi-Segment VU Level Meter + Clip Lamp -->
+                        <Border Grid.Row="2" Background="#141414" BorderBrush="#2B2B2B" BorderThickness="1" CornerRadius="2" Padding="2">
+                            <Grid ColumnDefinitions="*,12">
+                                <Canvas Name="CanvasMicMeter" Grid.Column="0" ClipToBounds="True" />
+                                <Border Name="LedMicClip" Grid.Column="1" Width="8" Height="8" CornerRadius="4" Background="#330A0E" BorderBrush="#551118" BorderThickness="1" HorizontalAlignment="Center" VerticalAlignment="Center" ToolTip.Tip="Peak / Clip Warning" />
+                            </Grid>
+                        </Border>
+
+                        <!-- Input Device Selector Dropdown -->
+                        <ComboBox Grid.Row="4"
+                                  Name="CmbInputDevice"
+                                  HorizontalAlignment="Stretch"
+                                  Height="28"
+                                  FontSize="9"
+                                  SelectionChanged="OnInputDeviceChanged" />
+
+                        <!-- Center Vertical Fader Slot with Subtle 0.0 dB Line -->
+                        <Grid Grid.Row="6" ColumnDefinitions="26,*" Margin="0,2">
+                            
+                            <!-- Left Calibrated Scale Ticks -->
+                            <Grid Grid.Column="0" RowDefinitions="Auto,*,Auto,*,Auto,*,Auto,*,Auto,*,Auto" Margin="0,4,3,4">
+                                <TextBlock Grid.Row="0" Text="+18" FontSize="6.5" FontWeight="Bold" Foreground="#EF4444" HorizontalAlignment="Right" />
+                                <TextBlock Grid.Row="2" Text="+6" FontSize="6.5" FontWeight="Bold" Foreground="#F59E0B" HorizontalAlignment="Right" />
+                                <TextBlock Grid.Row="4" Text="0" FontSize="7" FontWeight="ExtraBold" Foreground="#CCCCCC" HorizontalAlignment="Right" />
+                                <TextBlock Grid.Row="6" Text="-12" FontSize="6.5" FontWeight="Bold" Foreground="#888888" HorizontalAlignment="Right" />
+                                <TextBlock Grid.Row="8" Text="-24" FontSize="6.5" FontWeight="Bold" Foreground="#666666" HorizontalAlignment="Right" />
+                                <TextBlock Grid.Row="10" Text="-inf" FontSize="6.5" FontWeight="Bold" Foreground="#444444" HorizontalAlignment="Right" />
+                            </Grid>
+
+                            <!-- Vertical Fader Well -->
+                            <Border Grid.Column="1" Background="#141414" BorderBrush="#2B2B2B" BorderThickness="1" CornerRadius="3" Padding="0,2">
+                                <Grid>
+                                    <!-- Subtle 0.0 dB Unity Gain Reference Line -->
+                                    <Grid RowDefinitions="23*,1,77*">
+                                        <Rectangle Grid.Row="1" Height="1" Fill="#4B5563" Opacity="0.4" Margin="4,0" />
+                                    </Grid>
+                                    
+                                    <Slider Name="SldMicGain"
+                                            Orientation="Vertical"
+                                            Minimum="-60"
+                                            Maximum="18"
+                                            Value="0"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Stretch"
+                                            ToolTip.Tip="Double-click to reset to 0.0 dB (Unity)"
+                                            DoubleTapped="OnMicGainDoubleTapped"
+                                            ValueChanged="OnMicGainChanged" />
+                                </Grid>
+                            </Border>
+                        </Grid>
+
+                        <!-- Clickable dB Readout Badge -->
+                        <Border Grid.Row="8"
+                                Background="#141414"
+                                BorderBrush="#2E2E2E"
+                                BorderThickness="1"
+                                CornerRadius="3"
+                                Height="26"
+                                Cursor="Hand"
+                                ToolTip.Tip="Click or Double-click to reset to 0.0 dB"
+                                PointerPressed="OnMicDbPointerPressed"
+                                DoubleTapped="OnMicGainDoubleTapped">
+                            <Grid ColumnDefinitions="*,Auto" Margin="8,0">
+                                <TextBlock Grid.Column="0" Text="MIC GAIN" FontSize="8.5" FontWeight="Bold" Foreground="#888888" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1" Name="TxtMicDb" Text="0.0 dB" FontSize="9.5" FontWeight="ExtraBold" Foreground="#38BDF8" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+
+                        <!-- Mute Pushbutton with Illuminated LED -->
+                        <ToggleButton Grid.Row="10"
+                                      Name="BtnMicMute"
+                                      Classes="rc-toggle"
+                                      HorizontalAlignment="Stretch"
+                                      Height="28"
+                                      IsCheckedChanged="OnMicMuteChanged">
+                            <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <Ellipse Name="LedMicMute" Width="6" Height="6" Fill="#334155" VerticalAlignment="Center" />
+                                <TextBlock Name="TxtMicMute" Text="MUTE MIC" FontSize="9.0" FontWeight="ExtraBold" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </ToggleButton>
+                    </Grid>
+                </Border>
+
+                <!-- ===================================================================== -->
+                <!-- COLUMN 2: MERGED OUTPUTS & EFFECT CHAIN LAUNCHER                      -->
+                <!-- ===================================================================== -->
+                <Border Grid.Column="1"
+                        Background="#202020"
+                        BorderBrush="#333333"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Padding="12,10"
+                        Margin="4,0,0,0">
+                    <Grid RowDefinitions="*,1,*,10,Auto">
+                        
+                        <!-- 1. STREAM OUTPUT SECTION (VB-CABLE) -->
+                        <Grid Grid.Row="0" RowDefinitions="22,6,24,6,28,6,34">
+                            <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0" Text="BUS B1 - VIRTUAL MIC" FontSize="10" FontWeight="ExtraBold" Foreground="#EEEEEE" VerticalAlignment="Center" />
+                                <Border Grid.Column="1" Background="#14331E" CornerRadius="2" Padding="5,1" VerticalAlignment="Center">
+                                    <TextBlock Text="STREAM" FontSize="7.5" FontWeight="Bold" Foreground="#34D399" />
+                                </Border>
+                            </Grid>
+
+                            <!-- Live Multi-Segment Meter + Clip Lamp -->
+                            <Border Grid.Row="2" Background="#141414" BorderBrush="#2B2B2B" BorderThickness="1" CornerRadius="2" Padding="2">
+                                <Grid ColumnDefinitions="*,12">
+                                    <Canvas Name="CanvasVBCableMeter" Grid.Column="0" ClipToBounds="True" />
+                                    <Border Name="LedVBCableClip" Grid.Column="1" Width="8" Height="8" CornerRadius="4" Background="#330A0E" BorderBrush="#551118" BorderThickness="1" HorizontalAlignment="Center" VerticalAlignment="Center" ToolTip.Tip="Peak / Clip Warning" />
+                                </Grid>
+                            </Border>
+
+                            <!-- Dropdown -->
+                            <ComboBox Grid.Row="4"
+                                      Name="CmbVBCableDevice"
+                                      HorizontalAlignment="Stretch"
+                                      Height="28"
+                                      FontSize="9"
+                                      SelectionChanged="OnVBCableDeviceChanged" />
+
+                            <!-- Controls Row -->
+                            <Grid Grid.Row="6" ColumnDefinitions="64,8,*,8,70" Height="34" VerticalAlignment="Center">
+                                <ToggleButton Grid.Column="0"
+                                              Name="BtnVBCableMute"
+                                              Classes="rc-toggle"
+                                              Height="28"
+                                              HorizontalAlignment="Stretch"
+                                              IsCheckedChanged="OnVBCableMuteChanged">
+                                    <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Ellipse Name="LedVBCableMute" Width="5" Height="5" Fill="#334155" VerticalAlignment="Center" />
+                                        <TextBlock Name="TxtVBCableMute" Text="MUTE" FontSize="8.0" FontWeight="Bold" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </ToggleButton>
+
+                                <Slider Grid.Column="2"
+                                        Name="SldVBCableGain"
+                                        Orientation="Horizontal"
+                                        Minimum="-60"
+                                        Maximum="6"
+                                        Value="0"
+                                        Height="34"
+                                        VerticalAlignment="Center"
+                                        ToolTip.Tip="Double-click to reset to 0.0 dB"
+                                        DoubleTapped="OnVBCableGainDoubleTapped"
+                                        ValueChanged="OnVBCableGainChanged" />
+
+                                <Border Grid.Column="4"
+                                        Background="#141414"
+                                        BorderBrush="#2E2E2E"
+                                        BorderThickness="1"
+                                        CornerRadius="3"
+                                        Height="28"
+                                        Cursor="Hand"
+                                        ToolTip.Tip="Click or Double-click to reset to 0.0 dB"
+                                        PointerPressed="OnVBCableDbPointerPressed"
+                                        DoubleTapped="OnVBCableGainDoubleTapped">
+                                    <TextBlock Name="TxtVBCableDb"
+                                               Text="0.0 dB"
+                                               FontSize="9.5"
+                                               FontWeight="Bold"
+                                               Foreground="#38BDF8"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Center" />
+                                </Border>
+                            </Grid>
+                        </Grid>
+
+                        <!-- Thin Divider -->
+                        <Rectangle Grid.Row="1" Fill="#2C2C2C" Margin="0,6" />
+
+                        <!-- 2. HEADPHONES MONITOR SECTION (AUX A1) -->
+                        <Grid Grid.Row="2" RowDefinitions="22,6,24,6,28,6,34" Margin="0,2,0,0">
+                            <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0" Text="AUX A1 - MONITOR" FontSize="10" FontWeight="ExtraBold" Foreground="#EEEEEE" VerticalAlignment="Center" />
+                                <Border Grid.Column="1" Background="#33240D" CornerRadius="2" Padding="5,1" VerticalAlignment="Center">
+                                    <TextBlock Text="CUE" FontSize="7.5" FontWeight="Bold" Foreground="#F59E0B" />
+                                </Border>
+                            </Grid>
+
+                            <!-- Live Multi-Segment Meter + Clip Lamp -->
+                            <Border Grid.Row="2" Background="#141414" BorderBrush="#2B2B2B" BorderThickness="1" CornerRadius="2" Padding="2">
+                                <Grid ColumnDefinitions="*,12">
+                                    <Canvas Name="CanvasMonitorMeter" Grid.Column="0" ClipToBounds="True" />
+                                    <Border Name="LedMonClip" Grid.Column="1" Width="8" Height="8" CornerRadius="4" Background="#330A0E" BorderBrush="#551118" BorderThickness="1" HorizontalAlignment="Center" VerticalAlignment="Center" ToolTip.Tip="Peak / Clip Warning" />
+                                </Grid>
+                            </Border>
+
+                            <!-- Dropdown -->
+                            <ComboBox Grid.Row="4"
+                                      Name="CmbMonitorDevice"
+                                      HorizontalAlignment="Stretch"
+                                      Height="28"
+                                      FontSize="9"
+                                      SelectionChanged="OnMonitorDeviceChanged" />
+
+                            <!-- Controls Row -->
+                            <Grid Grid.Row="6" ColumnDefinitions="64,8,*,8,70" Height="34" VerticalAlignment="Center">
+                                <ToggleButton Grid.Column="0"
+                                              Name="ChkMonitorVoice"
+                                              Classes="rc-toggle-mon"
+                                              Height="28"
+                                              HorizontalAlignment="Stretch"
+                                              IsCheckedChanged="OnMonitorVoiceCheckedChanged">
+                                    <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Ellipse Name="LedMonState" Width="5" Height="5" Fill="#334155" VerticalAlignment="Center" />
+                                        <TextBlock Name="TxtMonState" Text="MON" FontSize="8.0" FontWeight="Bold" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </ToggleButton>
+
+                                <Slider Grid.Column="2"
+                                        Name="SldMonitorGain"
+                                        Orientation="Horizontal"
+                                        Minimum="-60"
+                                        Maximum="6"
+                                        Value="0"
+                                        Height="34"
+                                        VerticalAlignment="Center"
+                                        ToolTip.Tip="Double-click to reset to 0.0 dB"
+                                        DoubleTapped="OnMonitorGainDoubleTapped"
+                                        ValueChanged="OnMonitorGainChanged" />
+
+                                <Border Grid.Column="4"
+                                        Background="#141414"
+                                        BorderBrush="#2E2E2E"
+                                        BorderThickness="1"
+                                        CornerRadius="3"
+                                        Height="28"
+                                        Cursor="Hand"
+                                        ToolTip.Tip="Click or Double-click to reset to 0.0 dB"
+                                        PointerPressed="OnMonitorDbPointerPressed"
+                                        DoubleTapped="OnMonitorGainDoubleTapped">
+                                    <TextBlock Name="TxtMonitorDb"
+                                               Text="0.0 dB"
+                                               FontSize="9.5"
+                                               FontWeight="Bold"
+                                               Foreground="#F59E0B"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Center" />
+                                </Border>
+                            </Grid>
+                        </Grid>
+
+                        <!-- Big Action Buttons: Effect Chain & Modular Canvas -->
+                        <Grid Grid.Row="4" ColumnDefinitions="*,8,*">
+                            <!-- Open Effect Chain Console -->
+                            <Button Grid.Column="0"
+                                    Height="32"
+                                    HorizontalAlignment="Stretch"
+                                    Background="#242B38"
+                                    Foreground="#60A5FA"
+                                    BorderBrush="#3B4961"
+                                    BorderThickness="1"
+                                    CornerRadius="2"
+                                    Click="OnOpenEffectChainClicked">
+                                <TextBlock Text="EFFECT CHAIN" FontSize="8.5" FontWeight="Bold" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                            </Button>
+
+                            <!-- Open Modular Canvas -->
+                            <Button Grid.Column="2"
+                                    Height="32"
+                                    HorizontalAlignment="Stretch"
+                                    Background="#26262A"
+                                    Foreground="#E2E8F0"
+                                    BorderBrush="#3D3D45"
+                                    BorderThickness="1"
+                                    CornerRadius="2"
+                                    Click="OnOpenCanvasClicked">
+                                <TextBlock Text="MODULAR CANVAS" FontSize="8.5" FontWeight="Bold" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                            </Button>
+                        </Grid>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!-- ========================================================================= -->
+            <!-- 3. BOTTOM FOOTER BAR                                                      -->
+            <!-- ========================================================================= -->
+            <Border Grid.Row="2" Background="#1C1C1C" BorderBrush="#2B2B2B" BorderThickness="0,1,0,0" Padding="14,0">
+                <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
+                    
+                    <!-- Left DSP Info -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Background="#262626" BorderBrush="#383838" BorderThickness="1" CornerRadius="2" Padding="6,2">
+                            <TextBlock Text="48 kHz • 24-bit" FontSize="8" FontWeight="Bold" Foreground="#888888" />
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Center Quick Actions -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Button Height="26"
+                                Padding="12,0"
+                                Background="#262626"
+                                Foreground="#CCCCCC"
+                                BorderBrush="#383838"
+                                BorderThickness="1"
+                                CornerRadius="2"
+                                Margin="0,0,8,0"
+                                VerticalAlignment="Center"
+                                Click="OnAudioSettingsClicked">
+                            <TextBlock Text="AUDIO ENGINE SETUP" FontSize="8.5" FontWeight="Bold" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                        </Button>
+                        
+                        <Button Height="26"
+                                Padding="12,0"
+                                Background="#262626"
+                                Foreground="#FCA5A5"
+                                BorderBrush="#383838"
+                                BorderThickness="1"
+                                CornerRadius="2"
+                                VerticalAlignment="Center"
+                                Click="OnResetAllFadersClicked">
+                            <TextBlock Text="RESET FADERS (0 dB)" FontSize="8.5" FontWeight="Bold" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                        </Button>
+                    </StackPanel>
+
+                    <!-- Right Core Status -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Background="#14331E" CornerRadius="2" Padding="6,2">
+                            <TextBlock Text="ENGINE ACTIVE" FontSize="8" FontWeight="Bold" Foreground="#34D399" />
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

@@ -27,12 +27,12 @@ public:
     UpwardCompressorModule()
         : ModuleProcessor ("Upward Compressor", createLayout())
     {
-        upwardBoostParam = apvts.getRawParameterValue ("upwardBoost");
-        upwardDepthParam = apvts.getRawParameterValue ("upwardDepth");
-        downThreshParam  = apvts.getRawParameterValue ("downThresh");
-        downRatioParam   = apvts.getRawParameterValue ("downRatio");
-        attackParam      = apvts.getRawParameterValue ("attack");
-        releaseParam     = apvts.getRawParameterValue ("release");
+        upwardBoostParam = getModuleParam ("upwardBoost", 9.0f);
+        upwardDepthParam = getModuleParam ("upwardDepth", 60.0f);
+        downThreshParam  = getModuleParam ("downThresh", -18.0f);
+        downRatioParam   = getModuleParam ("downRatio", 3.5f);
+        attackParam      = getModuleParam ("attack", 8.0f);
+        releaseParam     = getModuleParam ("release", 80.0f);
 
         for (int i = 0; i < historySize; ++i)
             history[i] = { 0.0f, 0.0f, 0.0f, 0.0f };
@@ -56,12 +56,12 @@ public:
         const int numSamples  = buffer.getNumSamples();
         if (numChannels == 0 || numSamples == 0) return;
 
-        float upMaxBoostDb  = upwardBoostParam->load();
-        float upDepth       = juce::jlimit (0.0f, 100.0f, upwardDepthParam->load()) * 0.01f;
-        float downThreshDb  = downThreshParam->load();
-        float downRatio     = downRatioParam->load();
-        float attMs         = attackParam->load();
-        float relMs         = releaseParam->load();
+        float upMaxBoostDb  = upwardBoostParam.get (9.0f);
+        float upDepth       = juce::jlimit (0.0f, 100.0f, upwardDepthParam.get (60.0f)) * 0.01f;
+        float downThreshDb  = downThreshParam.get (-18.0f);
+        float downRatio     = downRatioParam.get (3.5f);
+        float attMs         = attackParam.get (8.0f);
+        float relMs         = releaseParam.get (80.0f);
 
         float upThreshDb = downThreshDb - 14.0f; // Upward knee threshold
 
@@ -192,12 +192,12 @@ private:
         };
     }
 
-    std::atomic<float>* upwardBoostParam = nullptr;
-    std::atomic<float>* upwardDepthParam = nullptr;
-    std::atomic<float>* downThreshParam  = nullptr;
-    std::atomic<float>* downRatioParam   = nullptr;
-    std::atomic<float>* attackParam      = nullptr;
-    std::atomic<float>* releaseParam     = nullptr;
+    ParamRef upwardBoostParam;
+    ParamRef upwardDepthParam;
+    ParamRef downThreshParam;
+    ParamRef downRatioParam;
+    ParamRef attackParam;
+    ParamRef releaseParam;
 
     double sampleRate = 44100.0;
     float currentEnvelope = 0.0f;

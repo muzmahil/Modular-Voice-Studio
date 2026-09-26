@@ -24,8 +24,8 @@ public:
     NoiseSuppressionModule()
         : ModuleProcessor ("Noise Suppression", createLayout())
     {
-        amountParam = apvts.getRawParameterValue ("amount");
-        vadParam    = apvts.getRawParameterValue ("vadSensitivity");
+        amountParam = getModuleParam ("amount", 100.0f);
+        vadParam    = getModuleParam ("vadSensitivity", 30.0f);
 
         denoiseStates[0] = rnnoise_create (nullptr);
         denoiseStates[1] = rnnoise_create (nullptr);
@@ -74,8 +74,8 @@ public:
         const int numSamples  = buffer.getNumSamples();
         if (numChannels == 0 || numSamples == 0) return;
 
-        float amountNorm = juce::jlimit (0.0f, 1.0f, amountParam->load() * 0.01f);
-        float vadThresh  = juce::jlimit (0.0f, 1.0f, vadParam->load() * 0.01f);
+        float amountNorm = juce::jlimit (0.0f, 1.0f, amountParam.get (100.0f) * 0.01f);
+        float vadThresh  = juce::jlimit (0.0f, 1.0f, vadParam.get (30.0f) * 0.01f);
 
         float blockDryPeak = 0.0f;
         float blockCleanPeak = 0.0f;
@@ -200,8 +200,8 @@ private:
         };
     }
 
-    std::atomic<float>* amountParam = nullptr;
-    std::atomic<float>* vadParam    = nullptr;
+    ParamRef amountParam;
+    ParamRef vadParam;
 
     double sampleRate = 48000.0;
     DenoiseState* denoiseStates[2] = { nullptr, nullptr };

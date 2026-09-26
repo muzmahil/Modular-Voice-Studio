@@ -20,10 +20,10 @@ public:
     VocalDoublerModule()
         : ModuleProcessor ("Vocal Doubler", createLayout())
     {
-        spreadParam  = apvts.getRawParameterValue ("spread");
-        detuneParam  = apvts.getRawParameterValue ("detune");
-        delayParam   = apvts.getRawParameterValue ("delayTime");
-        levelParam   = apvts.getRawParameterValue ("doubleLevel");
+        spreadParam  = getModuleParam ("spread", 75.0f);
+        detuneParam  = getModuleParam ("detune", 15.0f);
+        delayParam   = getModuleParam ("delayTime", 20.0f);
+        levelParam   = getModuleParam ("doubleLevel", 80.0f);
 
         for (int i = 0; i < scopePoints; ++i)
             scopeHistory[i] = { 0.0f, 0.0f };
@@ -49,10 +49,10 @@ public:
         const int numSamples  = buffer.getNumSamples();
         if (numChannels == 0 || numSamples == 0) return;
 
-        float spreadNorm = juce::jlimit (0.0f, 1.0f, spreadParam->load() * 0.01f);
-        float detuneCts  = juce::jlimit (0.0f, 20.0f, detuneParam->load());
-        float baseDelayMs= juce::jlimit (5.0f, 40.0f, delayParam->load());
-        float dblGain    = juce::jlimit (0.0f, 1.0f, levelParam->load() * 0.01f);
+        float spreadNorm = juce::jlimit (0.0f, 1.0f, spreadParam.get (75.0f) * 0.01f);
+        float detuneCts  = juce::jlimit (0.0f, 20.0f, detuneParam.get (15.0f));
+        float baseDelayMs= juce::jlimit (5.0f, 40.0f, delayParam.get (20.0f));
+        float dblGain    = juce::jlimit (0.0f, 1.0f, levelParam.get (80.0f) * 0.01f);
 
         // LFO rate for micro-pitch detuning (0.4 Hz to 0.7 Hz)
         float lfoIncL = (2.0f * juce::MathConstants<float>::pi * 0.45f) / (float) sampleRate;
@@ -157,10 +157,10 @@ private:
         return buf[i0] + frac * (buf[i1] - buf[i0]);
     }
 
-    std::atomic<float>* spreadParam = nullptr;
-    std::atomic<float>* detuneParam = nullptr;
-    std::atomic<float>* delayParam  = nullptr;
-    std::atomic<float>* levelParam  = nullptr;
+    ParamRef spreadParam;
+    ParamRef detuneParam;
+    ParamRef delayParam;
+    ParamRef levelParam;
 
     double sampleRate = 44100.0;
     int maxDelaySamples = 2646;

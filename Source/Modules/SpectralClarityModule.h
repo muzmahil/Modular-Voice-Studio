@@ -28,10 +28,10 @@ public:
     SpectralClarityModule()
         : ModuleProcessor ("Spectral Clarity", createLayout())
     {
-        amountParam    = apvts.getRawParameterValue ("amount");
-        thresholdParam = apvts.getRawParameterValue ("threshold");
-        sharpnessParam = apvts.getRawParameterValue ("sharpness");
-        speedParam     = apvts.getRawParameterValue ("speed");
+        amountParam    = getModuleParam ("amount", 65.0f);
+        thresholdParam = getModuleParam ("threshold", -36.0f);
+        sharpnessParam = getModuleParam ("sharpness", 1.4f);
+        speedParam     = getModuleParam ("speed", 50.0f);
 
         for (int b = 0; b < numBands; ++b)
         {
@@ -99,10 +99,10 @@ public:
         const int numSamples  = buffer.getNumSamples();
         if (numChannels == 0 || numSamples == 0) return;
 
-        float amount    = juce::jlimit (0.0f, 100.0f, amountParam->load()) * 0.01f;
-        float threshDb  = thresholdParam->load();
-        float sharpness = juce::jlimit (0.5f, 3.0f, sharpnessParam->load());
-        float speedNorm = juce::jlimit (0.0f, 1.0f, speedParam->load() * 0.01f);
+        float amount    = juce::jlimit (0.0f, 100.0f, amountParam.get (65.0f)) * 0.01f;
+        float threshDb  = thresholdParam.get (-36.0f);
+        float sharpness = juce::jlimit (0.5f, 3.0f, sharpnessParam.get (1.4f));
+        float speedNorm = juce::jlimit (0.0f, 1.0f, speedParam.get (50.0f) * 0.01f);
 
         // Attack & release smoothing coefficients
         float attCoeff = std::exp (-1.0f / (float) ((0.003f + (1.0f - speedNorm) * 0.008f) * sampleRate));
@@ -248,10 +248,10 @@ private:
         };
     }
 
-    std::atomic<float>* amountParam    = nullptr;
-    std::atomic<float>* thresholdParam = nullptr;
-    std::atomic<float>* sharpnessParam = nullptr;
-    std::atomic<float>* speedParam     = nullptr;
+    ParamRef amountParam;
+    ParamRef thresholdParam;
+    ParamRef sharpnessParam;
+    ParamRef speedParam;
 
     double sampleRate = 44100.0;
 

@@ -1,0 +1,68 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="ModularVoiceStudio.Installer.UninstallWindow"
+        Title="Uninstall Modular Voice Studio"
+        Width="540" Height="320"
+        CanResize="False"
+        WindowStartupLocation="CenterScreen"
+        SystemDecorations="None"
+        Background="#F5F5F5">
+
+    <Border BorderBrush="#CCCCCC" BorderThickness="1" CornerRadius="8" ClipToBounds="True">
+        <Grid RowDefinitions="50,*">
+            <!-- Top Bar -->
+            <Grid Grid.Row="0" Background="#000000" ColumnDefinitions="Auto,*,Auto" PointerPressed="OnTopBarPointerPressed">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0" Spacing="8">
+                    <Image Width="22" Height="22" Source="avares://ModularVoiceStudio_Setup/Assets/logo.png" VerticalAlignment="Center" />
+                    <TextBlock Text="Modular Voice Studio" FontWeight="Bold" FontSize="15" Foreground="#FFFFFF" VerticalAlignment="Center" />
+                    <TextBlock Text="UNINSTALL" FontSize="10" FontWeight="SemiBold" Foreground="#FF453A" VerticalAlignment="Center" Margin="6,0,0,0" LetterSpacing="1" />
+                </StackPanel>
+                <Button Grid.Column="2" Click="OnCloseClick" Width="30" Height="30" Background="#1A1A1A" BorderBrush="#2A2A2A" BorderThickness="1" CornerRadius="15" Margin="0,0,10,0" Cursor="Hand">
+                    <TextBlock Text="✕" Foreground="#CCCCCC" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Button>
+                <!-- Red accent line -->
+                <Border Grid.ColumnSpan="3" Height="2" Background="#FF453A" VerticalAlignment="Bottom" />
+            </Grid>
+
+            <!-- Main Content -->
+            <Grid Grid.Row="1" Background="#F5F5F5" Margin="24,20,24,20">
+                <!-- Confirmation State -->
+                <Grid x:Name="ConfirmView" RowDefinitions="*,Auto">
+                    <StackPanel Grid.Row="0" Spacing="14" VerticalAlignment="Center">
+                        <TextBlock x:Name="TxtUninstallTitle" Text="Uninstall Modular Voice Studio" FontSize="18" FontWeight="Bold" Foreground="#1A1A1A" />
+                        <TextBlock x:Name="TxtUninstallDesc" Text="Are you sure you want to completely remove Modular Voice Studio from your computer?" FontSize="13" Foreground="#555555" TextWrapping="Wrap" />
+                    </StackPanel>
+
+                    <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" Margin="0,16,0,0">
+                        <Button Click="OnCloseClick" Content="CANCEL" x:Name="BtnCancel" Height="34" Width="90" Background="#DEDEDE" Foreground="#333333" BorderThickness="1" BorderBrush="#CCCCCC" CornerRadius="17" FontWeight="SemiBold" FontSize="11" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Cursor="Hand" />
+                        <Button Click="OnStartUninstallClick" Content="UNINSTALL" x:Name="BtnUninstall" Grid.Column="2" Height="34" Padding="20,0" Background="#FF453A" Foreground="#FFFFFF" BorderThickness="0" CornerRadius="17" FontWeight="Bold" FontSize="11" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Cursor="Hand" />
+                    </Grid>
+                </Grid>
+
+                <!-- Progress State -->
+                <Grid x:Name="ProgressView" IsVisible="False" RowDefinitions="*,Auto">
+                    <StackPanel Grid.Row="0" Spacing="16" VerticalAlignment="Center">
+                        <TextBlock x:Name="TxtProgressTitle" Text="Uninstalling Modular Voice Studio..." FontSize="18" FontWeight="Bold" Foreground="#1A1A1A" HorizontalAlignment="Center" />
+                        <TextBlock x:Name="TxtProgressDesc" Text="Removing plugin files and registry entries..." FontSize="13" Foreground="#666666" HorizontalAlignment="Center" />
+                        <ProgressBar IsIndeterminate="True" Height="8" CornerRadius="4" Background="#E0E0E0" Foreground="#FF453A" Margin="20,8" />
+                    </StackPanel>
+                </Grid>
+
+                <!-- Finished State -->
+                <Grid x:Name="FinishView" IsVisible="False" RowDefinitions="*,Auto">
+                    <StackPanel Grid.Row="0" Spacing="12" VerticalAlignment="Center" HorizontalAlignment="Center">
+                        <Border Width="50" Height="50" CornerRadius="25" Background="#FFFFFF" BorderBrush="#30D158" BorderThickness="2" HorizontalAlignment="Center">
+                            <TextBlock Text="✓" FontSize="26" FontWeight="Bold" Foreground="#30D158" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <TextBlock x:Name="TxtSuccessTitle" Text="Uninstallation Complete" FontSize="18" FontWeight="Bold" Foreground="#1A1A1A" HorizontalAlignment="Center" />
+                        <TextBlock x:Name="TxtSuccessDesc" Text="Modular Voice Studio was successfully removed." FontSize="13" Foreground="#666666" HorizontalAlignment="Center" />
+                    </StackPanel>
+
+                    <Grid Grid.Row="1" HorizontalAlignment="Right" Margin="0,16,0,0">
+                        <Button Click="OnCloseClick" Content="CLOSE" x:Name="BtnClose" Height="34" Width="100" Background="#0A84FF" Foreground="#FFFFFF" BorderThickness="0" CornerRadius="17" FontWeight="Bold" FontSize="11" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Cursor="Hand" />
+                    </Grid>
+                </Grid>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

@@ -23,9 +23,9 @@ public:
     AECModule()
         : ModuleProcessor ("AEC", createLayout())
     {
-        depthParam = apvts.getRawParameterValue ("depth");
-        speedParam = apvts.getRawParameterValue ("speed");
-        dtdParam   = apvts.getRawParameterValue ("dtdSensitivity");
+        depthParam = getModuleParam ("depth", 100.0f);
+        speedParam = getModuleParam ("speed", 55.0f);
+        dtdParam   = getModuleParam ("dtdSensitivity", 45.0f);
 
         weights.assign (filterTaps, 0.0f);
         refBuffer.assign (filterTaps * 2, 0.0f);
@@ -51,9 +51,9 @@ public:
         const int numSamples  = buffer.getNumSamples();
         if (numChannels == 0 || numSamples == 0) return;
 
-        float depthNorm = juce::jlimit (0.0f, 1.0f, depthParam->load() * 0.01f);
-        float muBase    = juce::jlimit (0.005f, 0.25f, (speedParam->load() * 0.01f) * 0.20f + 0.005f);
-        float dtdSens   = juce::jlimit (0.1f, 2.5f, dtdParam->load() * 0.02f + 0.1f);
+        float depthNorm = juce::jlimit (0.0f, 1.0f, depthParam.get (100.0f) * 0.01f);
+        float muBase    = juce::jlimit (0.005f, 0.25f, (speedParam.get (55.0f) * 0.01f) * 0.20f + 0.005f);
+        float dtdSens   = juce::jlimit (0.1f, 2.5f, dtdParam.get (45.0f) * 0.02f + 0.1f);
 
         auto* micChannel = buffer.getWritePointer (0);
         const float* refChannel = (numChannels > 1) ? buffer.getReadPointer (1) : nullptr;
@@ -197,9 +197,9 @@ private:
         };
     }
 
-    std::atomic<float>* depthParam = nullptr;
-    std::atomic<float>* speedParam = nullptr;
-    std::atomic<float>* dtdParam   = nullptr;
+    ParamRef depthParam;
+    ParamRef speedParam;
+    ParamRef dtdParam;
 
     double sampleRate = 48000.0;
     std::vector<float> weights;

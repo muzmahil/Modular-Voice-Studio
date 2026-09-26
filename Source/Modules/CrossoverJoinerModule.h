@@ -24,17 +24,17 @@ public:
                                .withOutput ("Output",      juce::AudioChannelSet::stereo(), true),
                            createLayout())
     {
-        lowGainParam  = apvts.getRawParameterValue ("lowGain");
-        midGainParam  = apvts.getRawParameterValue ("midGain");
-        highGainParam = apvts.getRawParameterValue ("highGain");
+        lowGainParam  = getRawParam ("lowGain");
+        midGainParam  = getRawParam ("midGain");
+        highGainParam = getRawParam ("highGain");
 
-        lowSoloParam  = apvts.getRawParameterValue ("lowSolo");
-        midSoloParam  = apvts.getRawParameterValue ("midSolo");
-        highSoloParam = apvts.getRawParameterValue ("highSolo");
+        lowSoloParam  = getRawParam ("lowSolo");
+        midSoloParam  = getRawParam ("midSolo");
+        highSoloParam = getRawParam ("highSolo");
 
-        lowMuteParam  = apvts.getRawParameterValue ("lowMute");
-        midMuteParam  = apvts.getRawParameterValue ("midMute");
-        highMuteParam = apvts.getRawParameterValue ("highMute");
+        lowMuteParam  = getRawParam ("lowMute");
+        midMuteParam  = getRawParam ("midMute");
+        highMuteParam = getRawParam ("highMute");
     }
 
     ~CrossoverJoinerModule() override = default;

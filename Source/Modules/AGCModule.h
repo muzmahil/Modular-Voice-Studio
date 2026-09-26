@@ -20,11 +20,11 @@ public:
     AGCModule()
         : ModuleProcessor ("AGC", createLayout())
     {
-        targetParam   = apvts.getRawParameterValue ("target");
-        maxBoostParam = apvts.getRawParameterValue ("maxBoost");
-        maxCutParam   = apvts.getRawParameterValue ("maxCut");
-        speedParam    = apvts.getRawParameterValue ("speed");
-        gateParam     = apvts.getRawParameterValue ("gateThresh");
+        targetParam   = getModuleParam ("target", -18.0f);
+        maxBoostParam = getModuleParam ("maxBoost", 12.0f);
+        maxCutParam   = getModuleParam ("maxCut", 12.0f);
+        speedParam    = getModuleParam ("speed", 40.0f);
+        gateParam     = getModuleParam ("gateThresh", -42.0f);
 
         for (int i = 0; i < historyLength; ++i)
             history[i] = { -60.0f, 0.0f };
@@ -46,11 +46,11 @@ public:
         const int numSamples  = buffer.getNumSamples();
         if (numChannels == 0 || numSamples == 0) return;
 
-        float targetDb   = targetParam->load();
-        float maxBoostDb = maxBoostParam->load();
-        float maxCutDb   = -maxCutParam->load();
-        float speedNorm  = juce::jlimit (0.0f, 1.0f, speedParam->load() * 0.01f);
-        float gateDb     = gateParam->load();
+        float targetDb   = targetParam.get (-18.0f);
+        float maxBoostDb = maxBoostParam.get (12.0f);
+        float maxCutDb   = -maxCutParam.get (12.0f);
+        float speedNorm  = juce::jlimit (0.0f, 1.0f, speedParam.get (40.0f) * 0.01f);
+        float gateDb     = gateParam.get (-42.0f);
 
         // Speed translates to smoothing time: 50ms (fast) to 600ms (slow transparent)
         float smoothTimeSec = 0.60f - speedNorm * 0.52f;
@@ -101,8 +101,8 @@ public:
 
     float getLiveGainDb() const    { return liveCurrentGainDb.load (std::memory_order_relaxed); }
     float getLiveInputRms() const  { return liveInputRmsDb.load (std::memory_order_relaxed); }
-    float getTargetDb() const      { return targetParam ? targetParam->load() : -16.0f; }
-    float getGateDb() const        { return gateParam ? gateParam->load() : -42.0f; }
+    float getTargetDb() const      { return targetParam.get (-16.0f); }
+    float getGateDb() const        { return gateParam.get (-42.0f); }
 
     void getHistoryData (std::vector<LevelPoint>& dest) const
     {
@@ -143,11 +143,11 @@ private:
         };
     }
 
-    std::atomic<float>* targetParam   = nullptr;
-    std::atomic<float>* maxBoostParam = nullptr;
-    std::atomic<float>* maxCutParam   = nullptr;
-    std::atomic<float>* speedParam    = nullptr;
-    std::atomic<float>* gateParam     = nullptr;
+    ParamRef targetParam;
+    ParamRef maxBoostParam;
+    ParamRef maxCutParam;
+    ParamRef speedParam;
+    ParamRef gateParam;
 
     double sampleRate = 44100.0;
     float currentGainLin = 1.0f;

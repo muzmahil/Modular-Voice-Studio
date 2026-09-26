@@ -1,0 +1,114 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="ModularVoiceStudio.App.Views.VBCableGuideDialog"
+        Title="VB-CABLE Virtual Microphone Setup Guide"
+        Width="520"
+        Height="400"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        Background="#181818"
+        Foreground="#E0E0E0">
+
+    <Border BorderBrush="#5C667A" BorderThickness="1.5" Background="#181818" Padding="20">
+        <Grid RowDefinitions="Auto,*,Auto">
+            
+            <!-- Header -->
+            <StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,14">
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="VB-CABLE VIRTUAL MIC GUIDE" FontSize="13" FontWeight="Black" Foreground="#38BDF8" VerticalAlignment="Center" />
+                    <Border Background="#14331E" CornerRadius="2" Padding="6,2" VerticalAlignment="Center">
+                        <TextBlock Text="STREAM SETUP" FontSize="8" FontWeight="Bold" Foreground="#34D399" />
+                    </Border>
+                </Grid>
+                <TextBlock Text="Route your ultra-clean, processed voice into Discord, OBS, Zoom, or Games."
+                           FontSize="9.5" Foreground="#888888" />
+            </StackPanel>
+
+            <!-- Guide Steps -->
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                <StackPanel Spacing="10" Margin="0,0,6,0">
+                    
+                    <!-- Step 1 -->
+                    <Border Background="#202020" BorderBrush="#333333" BorderThickness="1" CornerRadius="4" Padding="12,10">
+                        <Grid ColumnDefinitions="28,*">
+                            <Border Grid.Column="0" Width="20" Height="20" CornerRadius="10" Background="#38BDF8" VerticalAlignment="Top">
+                                <TextBlock Text="1" FontSize="10" FontWeight="Bold" Foreground="#111827" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Spacing="3" Margin="8,0,0,0">
+                                <TextBlock Text="MVS Output Routing" FontSize="10.5" FontWeight="Bold" Foreground="#F0F0F0" />
+                                <TextBlock Text="In Modular Voice Studio (BUS B1), select 'CABLE Input (VB-Audio Virtual Cable)' as the stream output device."
+                                           FontSize="9" Foreground="#AAAAAA" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- Step 2 -->
+                    <Border Background="#202020" BorderBrush="#333333" BorderThickness="1" CornerRadius="4" Padding="12,10">
+                        <Grid ColumnDefinitions="28,*">
+                            <Border Grid.Column="0" Width="20" Height="20" CornerRadius="10" Background="#38BDF8" VerticalAlignment="Top">
+                                <TextBlock Text="2" FontSize="10" FontWeight="Bold" Foreground="#111827" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Spacing="3" Margin="8,0,0,0">
+                                <TextBlock Text="Target Application Settings (Discord / OBS / Games)" FontSize="10.5" FontWeight="Bold" Foreground="#F0F0F0" />
+                                <TextBlock Text="In your voice app's Audio Settings, set the Microphone / Input Device to 'CABLE Output (VB-Audio Virtual Cable)'."
+                                           FontSize="9" Foreground="#AAAAAA" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- Step 3 -->
+                    <Border Background="#202020" BorderBrush="#333333" BorderThickness="1" CornerRadius="4" Padding="12,10">
+                        <Grid ColumnDefinitions="28,*">
+                            <Border Grid.Column="0" Width="20" Height="20" CornerRadius="10" Background="#10B981" VerticalAlignment="Top">
+                                <TextBlock Text="3" FontSize="10" FontWeight="Bold" Foreground="#111827" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Spacing="3" Margin="8,0,0,0">
+                                <TextBlock Text="Zero Latency Voice Broadcast" FontSize="10.5" FontWeight="Bold" Foreground="#F0F0F0" />
+                                <TextBlock Text="Your voice will now pass through the MVS DSP processing chain in real-time with zero-latency 64-bit precision."
+                                           FontSize="9" Foreground="#AAAAAA" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Bottom Actions -->
+            <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,14,0,0">
+                <Button Grid.Column="0"
+                        Content="🌐 Open VB-Audio Official Website"
+                        FontSize="9"
+                        FontWeight="Bold"
+                        Height="28"
+                        Padding="12,0"
+                        Background="#252525"
+                        Foreground="#38BDF8"
+                        BorderBrush="#3D3D3D"
+                        BorderThickness="1"
+                        CornerRadius="3"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Center"
+                        VerticalContentAlignment="Center"
+                        HorizontalContentAlignment="Center"
+                        Click="OnOpenWebsiteClicked" />
+
+                <Button Grid.Column="1"
+                        Content="Close"
+                        FontSize="9.5"
+                        FontWeight="Bold"
+                        Width="80"
+                        Height="28"
+                        Padding="0"
+                        Background="#333333"
+                        Foreground="#FFFFFF"
+                        BorderBrush="#444444"
+                        BorderThickness="1"
+                        CornerRadius="3"
+                        HorizontalContentAlignment="Center"
+                        VerticalContentAlignment="Center"
+                        Click="OnCloseClicked" />
+            </Grid>
+
+        </Grid>
+    </Border>
+</Window>

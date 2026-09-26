@@ -13,7 +13,7 @@ public:
     explicit StubModule (juce::String displayName)
         : ModuleProcessor (std::move (displayName), createLayout())
     {
-        gainParam = apvts.getRawParameterValue ("gain");
+        gainParam = getRawParam ("gain");
     }
 
     void prepareToPlay (double, int) override {}
@@ -21,7 +21,8 @@ public:
 
     void processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer&) override
     {
-        buffer.applyGain (gainParam->load());
+        float g = gainParam ? gainParam->load() : 1.0f;
+        buffer.applyGain (g);
     }
 
     using AudioProcessor::processBlock;

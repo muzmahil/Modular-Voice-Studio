@@ -1,0 +1,35 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="ModularVoiceStudio.App.App"
+             RequestedThemeVariant="Dark">
+    <Application.Styles>
+        <FluentTheme />
+        <Style Selector="Window">
+            <Setter Property="FontFamily" Value="Helvetica, Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" />
+        </Style>
+        <Style Selector="TextBlock">
+            <Setter Property="FontFamily" Value="Helvetica, Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" />
+        </Style>
+        <Style Selector="Button">
+            <Setter Property="FontFamily" Value="Helvetica, Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" />
+        </Style>
+        <Style Selector="ToggleButton">
+            <Setter Property="FontFamily" Value="Helvetica, Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" />
+        </Style>
+        <Style Selector="TextBox">
+            <Setter Property="FontFamily" Value="Helvetica, Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" />
+        </Style>
+        <Style Selector="ComboBox">
+            <Setter Property="FontFamily" Value="Helvetica, Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" />
+        </Style>
+        <Style Selector="Label">
+            <Setter Property="FontFamily" Value="Helvetica, Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" />
+        </Style>
+        <Style Selector="MenuItem">
+            <Setter Property="FontFamily" Value="Helvetica, Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" />
+        </Style>
+        <Style Selector="ToolTip">
+            <Setter Property="FontFamily" Value="Helvetica, Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" />
+        </Style>
+    </Application.Styles>
+</Application>

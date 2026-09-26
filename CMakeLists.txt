@@ -53,6 +53,7 @@ target_sources(ModularVoiceStudio PRIVATE
     Source/PluginEditor.cpp
     Source/Graph/ModuleFactory.cpp
     Source/Graph/PresetManager.cpp
+    Source/Graph/GraphHistoryManager.cpp
     Source/UI/NodeComponent.cpp
     Source/UI/NodeCanvas.cpp
     Source/UI/CanvasMinimap.cpp
@@ -61,15 +62,22 @@ target_sources(ModularVoiceStudio PRIVATE
     Source/UI/PreferencesModal.cpp
     Source/UITheme.cpp
     Source/UI/SidebarComponent.cpp
+    Source/Mixer/MiniChainScreen.cpp
+    Source/Mixer/ChannelStripComponent.cpp
+    Source/Mixer/StandaloneMixerComponent.cpp
 )
 
-target_include_directories(ModularVoiceStudio PRIVATE Source Source/RNNoise/include)
+target_include_directories(ModularVoiceStudio PRIVATE Source Source/ASIOSDK Source/RNNoise/include)
 
 target_compile_definitions(ModularVoiceStudio PUBLIC
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0
     JUCE_VST3_CAN_REPLACE_VST2=0
     JUCE_DISPLAY_SPLASH_SCREEN=0
+    JUCE_WASAPI=1
+    JUCE_WASAPI_EXCLUSIVE=1
+    JUCE_DIRECTSOUND=1
+    JUCE_ASIO=1
 )
 
 set(FONT_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Source/Font/InterMedium.ttf")
@@ -106,9 +114,66 @@ target_link_libraries(ModularVoiceStudio PRIVATE
     juce::juce_opengl
 )
 
-# Force MSVC to read source files and output strings as UTF-8
-# Without this flag, MSVC uses the system ANSI codepage (CP-1252/CP-1254),
-# which breaks all u8"..." string literals for Turkish/Japanese/Russian characters.
 if(MSVC)
-    target_compile_options(ModularVoiceStudio PRIVATE /utf-8)
+    add_compile_options(/utf-8)
+endif()
+
+# --- Native Core Shared Library (C-ABI DLL for C# Interop) --------------
+add_library(ModularVoiceStudio_Core SHARED
+    Source/Interop/MVS_Core_Export.cpp
+    Source/PluginProcessor.cpp
+    Source/PluginEditor.cpp
+    Source/Graph/ModuleFactory.cpp
+    Source/Graph/PresetManager.cpp
+    Source/Graph/GraphHistoryManager.cpp
+    Source/UI/NodeComponent.cpp
+    Source/UI/NodeCanvas.cpp
+    Source/UI/CanvasMinimap.cpp
+    Source/UI/GlobalOscilloscopeHUD.cpp
+    Source/UI/NodeInspectorPanel.cpp
+    Source/UI/PreferencesModal.cpp
+    Source/UITheme.cpp
+    Source/UI/SidebarComponent.cpp
+    Source/Mixer/MiniChainScreen.cpp
+    Source/Mixer/ChannelStripComponent.cpp
+    Source/Mixer/StandaloneMixerComponent.cpp
+)
+
+target_include_directories(ModularVoiceStudio_Core PRIVATE Source Source/ASIOSDK Source/RNNoise/include)
+
+target_compile_definitions(ModularVoiceStudio_Core PUBLIC
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+    JUCE_VST3_CAN_REPLACE_VST2=0
+    JUCE_DISPLAY_SPLASH_SCREEN=0
+    JUCE_STANDALONE_APPLICATION=0
+    JUCE_WASAPI=1
+    JUCE_WASAPI_EXCLUSIVE=1
+    JUCE_DIRECTSOUND=1
+    JUCE_ASIO=1
+)
+
+target_link_libraries(ModularVoiceStudio_Core PRIVATE
+    ModularVoiceStudio_Data
+    rnnoise
+    juce::juce_audio_utils
+    juce::juce_audio_processors
+    juce::juce_dsp
+    juce::juce_gui_extra
+    juce::juce_recommended_config_flags
+    juce::juce_recommended_lto_flags
+    juce::juce_recommended_warning_flags
+    juce::juce_opengl
+)
+
+# --- Installer Target ---------------------------------------------------
+find_program(POWERSHELL_EXE NAMES powershell pwsh)
+if(POWERSHELL_EXE)
+    add_custom_target(ModularVoiceStudio_Installer
+        COMMAND "${POWERSHELL_EXE}" -ExecutionPolicy Bypass -File "${CMAKE_CURRENT_SOURCE_DIR}/Build-Installer.ps1" -Configuration "$<CONFIG>"
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+        COMMENT "Packaging Modular Voice Studio Installer..."
+        VERBATIM
+    )
+    add_dependencies(ModularVoiceStudio_Installer ModularVoiceStudio_All)
 endif()

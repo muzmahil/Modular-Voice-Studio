@@ -11,10 +11,10 @@ public:
     SaturationModule()
         : ModuleProcessor ("Saturation", createLayout())
     {
-        driveParam  = apvts.getRawParameterValue ("drive");
-        warmthParam = apvts.getRawParameterValue ("warmth");
-        mixParam    = apvts.getRawParameterValue ("mix");
-        toneParam   = apvts.getRawParameterValue ("tone");
+        driveParam  = getModuleParam ("drive", 25.0f);
+        warmthParam = getModuleParam ("warmth", 35.0f);
+        mixParam    = getModuleParam ("mix", 100.0f);
+        toneParam   = getModuleParam ("tone", 12000.0f);
     }
 
     void prepareToPlay (double sr, int) override
@@ -31,10 +31,10 @@ public:
         const int numSamples  = buffer.getNumSamples();
         if (numChannels == 0 || numSamples == 0) return;
 
-        float driveNorm  = juce::jlimit (0.0f, 1.0f, driveParam->load() * 0.01f);
-        float warmthNorm = juce::jlimit (0.0f, 1.0f, warmthParam->load() * 0.01f);
-        float mixNorm    = juce::jlimit (0.0f, 1.0f, mixParam->load() * 0.01f);
-        float toneCutoff = toneParam->load();
+        float driveNorm  = juce::jlimit (0.0f, 1.0f, driveParam.get (25.0f) * 0.01f);
+        float warmthNorm = juce::jlimit (0.0f, 1.0f, warmthParam.get (35.0f) * 0.01f);
+        float mixNorm    = juce::jlimit (0.0f, 1.0f, mixParam.get (100.0f) * 0.01f);
+        float toneCutoff = toneParam.get (12000.0f);
 
         // Drive gain multiplier: 1.0x to 8.0x
         float driveGain = 1.0f + driveNorm * 7.0f;
@@ -95,8 +95,8 @@ public:
     float getLiveGlow() const { return liveGlowIntensity.load (std::memory_order_relaxed); }
     float getLiveInputPeak() const { return liveInputPeak.load (std::memory_order_relaxed); }
     float getLiveOutputPeak() const { return liveOutputPeak.load (std::memory_order_relaxed); }
-    float getDriveNorm() const { return driveParam ? driveParam->load() * 0.01f : 0.25f; }
-    float getWarmthNorm() const { return warmthParam ? warmthParam->load() * 0.01f : 0.35f; }
+    float getDriveNorm() const { return driveParam.get (25.0f) * 0.01f; }
+    float getWarmthNorm() const { return warmthParam.get (35.0f) * 0.01f; }
 
 private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createLayout()
@@ -124,10 +124,10 @@ private:
         };
     }
 
-    std::atomic<float>* driveParam  = nullptr;
-    std::atomic<float>* warmthParam = nullptr;
-    std::atomic<float>* mixParam    = nullptr;
-    std::atomic<float>* toneParam   = nullptr;
+    ParamRef driveParam;
+    ParamRef warmthParam;
+    ParamRef mixParam;
+    ParamRef toneParam;
 
     double sampleRate = 44100.0;
     float toneFilterState[2] = { 0.0f, 0.0f };

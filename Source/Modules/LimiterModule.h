@@ -15,9 +15,9 @@ public:
     LimiterModule()
         : ModuleProcessor ("Limiter", createLayout())
     {
-        ceilingParam = apvts.getRawParameterValue ("ceiling");
-        gainParam    = apvts.getRawParameterValue ("gain");
-        releaseParam = apvts.getRawParameterValue ("release");
+        ceilingParam = getModuleParam ("ceiling", -0.3f);
+        gainParam    = getModuleParam ("gain", 0.0f);
+        releaseParam = getModuleParam ("release", 80.0f);
 
         delayBuffer.setSize (2, maxLookaheadSamples);
         delayBuffer.clear();
@@ -45,10 +45,10 @@ public:
         const int numSamples  = buffer.getNumSamples();
         if (numChannels == 0 || numSamples == 0) return;
 
-        float ceilingDb = ceilingParam->load();
+        float ceilingDb = ceilingParam.get (-0.3f);
         float ceilingLin= juce::Decibels::decibelsToGain (ceilingDb, -90.0f);
-        float inputGain = juce::Decibels::decibelsToGain (gainParam->load());
-        float relMs     = juce::jmax (5.0f, releaseParam->load());
+        float inputGain = juce::Decibels::decibelsToGain (gainParam.get (0.0f));
+        float relMs     = juce::jmax (5.0f, releaseParam.get (80.0f));
         float relCoeff  = std::exp (-1.0f / (float) ((relMs * 0.001f) * sampleRate));
 
         float blockMaxIn  = 0.0f;
@@ -117,7 +117,7 @@ public:
     float getLiveGainReduction() const { return liveGainReduction.load (std::memory_order_relaxed); }
     float getLiveInputPeak() const     { return liveInputPeak.load (std::memory_order_relaxed); }
     float getLiveOutputPeak() const    { return liveOutputPeak.load (std::memory_order_relaxed); }
-    float getCeilingDb() const         { return ceilingParam ? ceilingParam->load() : -0.3f; }
+    float getCeilingDb() const         { return ceilingParam.get (-0.3f); }
 
     struct HistoryPoint { float outDb; float grDb; };
     void getHistory (std::vector<HistoryPoint>& dest) const
@@ -149,9 +149,9 @@ private:
         };
     }
 
-    std::atomic<float>* ceilingParam = nullptr;
-    std::atomic<float>* gainParam    = nullptr;
-    std::atomic<float>* releaseParam = nullptr;
+    ParamRef ceilingParam;
+    ParamRef gainParam;
+    ParamRef releaseParam;
 
     double sampleRate = 44100.0;
     int lookaheadSamples = 132;

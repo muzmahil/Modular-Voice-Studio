@@ -27,7 +27,7 @@ public:
     ContainerModule()
         : ModuleProcessor ("Container", createLayout())
     {
-        mixParam = apvts.getRawParameterValue ("mix");
+        mixParam = getRawParam ("mix");
     }
 
     ~ContainerModule() override = default;

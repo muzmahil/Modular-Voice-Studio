@@ -11,9 +11,9 @@ public:
     DeClickModule()
         : ModuleProcessor ("De-Click", createLayout())
     {
-        threshParam = apvts.getRawParameterValue ("sensitivity");
-        widthParam  = apvts.getRawParameterValue ("maxClickWidth");
-        listenParam = apvts.getRawParameterValue ("listenClicks");
+        threshParam = getModuleParam ("sensitivity", 65.0f);
+        widthParam  = getModuleParam ("maxClickWidth", 3.0f);
+        listenParam = getModuleParam ("listenClicks", 0.0f);
     }
 
     void prepareToPlay (double sr, int) override
@@ -37,11 +37,11 @@ public:
         const int numSamples  = buffer.getNumSamples();
         if (numChannels == 0 || numSamples == 0) return;
 
-        float sensNorm = juce::jlimit (0.0f, 1.0f, threshParam->load() * 0.01f);
+        float sensNorm = juce::jlimit (0.0f, 1.0f, threshParam.get (65.0f) * 0.01f);
         // Higher sensitivity = lower threshold multiplier
         float spikeThreshold = 18.0f - sensNorm * 14.5f; // Range: 3.5x to 18x local envelope
-        bool listenClicks = listenParam->load() > 0.5f;
-        int maxClickWidth = juce::jlimit (1, 6, (int) std::lround (widthParam->load()));
+        bool listenClicks = listenParam.get (0.0f) > 0.5f;
+        int maxClickWidth = juce::jlimit (1, 6, (int) std::lround (widthParam.get (3.0f)));
 
         float envCoeff = std::exp (-1.0f / (float) (0.008f * sampleRate)); // 8ms moving envelope
         int blockClicks = 0;
@@ -143,9 +143,9 @@ private:
         };
     }
 
-    std::atomic<float>* threshParam = nullptr;
-    std::atomic<float>* widthParam  = nullptr;
-    std::atomic<float>* listenParam = nullptr;
+    ParamRef threshParam;
+    ParamRef widthParam;
+    ParamRef listenParam;
 
     double sampleRate = 44100.0;
     float prev1[2] = {}, prev2[2] = {};

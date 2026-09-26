@@ -11,11 +11,11 @@ public:
     ProximityModule()
         : ModuleProcessor ("Proximity", createLayout())
     {
-        distParam      = apvts.getRawParameterValue ("distance");
-        bodyParam      = apvts.getRawParameterValue ("body");
-        dynamicParam   = apvts.getRawParameterValue ("dynamic");
-        airLossParam   = apvts.getRawParameterValue ("airLoss");
-        autoLevelParam = apvts.getRawParameterValue ("autoLevel");
+        distParam      = getModuleParam ("distance", 12.0f);
+        bodyParam      = getModuleParam ("body", 60.0f);
+        dynamicParam   = getModuleParam ("dynamic", 45.0f);
+        airLossParam   = getModuleParam ("airLoss", 35.0f);
+        autoLevelParam = getModuleParam ("autoLevel", 1.0f);
     }
 
     void prepareToPlay (double sr, int) override
@@ -33,11 +33,11 @@ public:
         const int numSamples  = buffer.getNumSamples();
         if (numChannels == 0 || numSamples == 0) return;
 
-        float distanceCm = juce::jlimit (2.0f, 50.0f, distParam->load());
-        float bodyAmt    = juce::jlimit (0.0f, 1.0f, bodyParam->load() * 0.01f);
-        float dynAmt     = juce::jlimit (0.0f, 1.0f, dynamicParam->load() * 0.01f);
-        float airAmt     = juce::jlimit (0.0f, 1.0f, airLossParam->load() * 0.01f);
-        bool autoLevel   = autoLevelParam->load() > 0.5f;
+        float distanceCm = juce::jlimit (2.0f, 50.0f, distParam.get (12.0f));
+        float bodyAmt    = juce::jlimit (0.0f, 1.0f, bodyParam.get (60.0f) * 0.01f);
+        float dynAmt     = juce::jlimit (0.0f, 1.0f, dynamicParam.get (45.0f) * 0.01f);
+        float airAmt     = juce::jlimit (0.0f, 1.0f, airLossParam.get (35.0f) * 0.01f);
+        bool autoLevel   = autoLevelParam.get (1.0f) > 0.5f;
 
         // Acoustic modeling:
         // Reference distance d0 = 15 cm.
@@ -152,11 +152,11 @@ public:
 
     juce::AudioProcessorEditor* createEditor() override;
 
-    float getDistanceCm() const        { return distParam ? distParam->load() : 12.0f; }
-    void  setDistanceCm (float d)      { if (auto* p = apvts.getParameter ("distance")) p->setValueNotifyingHost (p->convertTo0to1 (d)); }
-    float getBody() const              { return bodyParam ? bodyParam->load() : 70.0f; }
-    float getDynamic() const           { return dynamicParam ? dynamicParam->load() : 50.0f; }
-    float getAirLoss() const           { return airLossParam ? airLossParam->load() : 40.0f; }
+    float getDistanceCm() const        { return distParam.get (12.0f); }
+    void  setDistanceCm (float d)      { distParam.set (d); }
+    float getBody() const              { return bodyParam.get (70.0f); }
+    float getDynamic() const           { return dynamicParam.get (50.0f); }
+    float getAirLoss() const           { return airLossParam.get (40.0f); }
     float getLiveVocalLevel() const    { return liveVocalLevel.load (std::memory_order_relaxed); }
     float getLiveDynamicClamp() const  { return liveDynamicClamp.load (std::memory_order_relaxed); }
 
@@ -247,11 +247,11 @@ private:
         hsA2 = ((A + 1.0f) - (A - 1.0f) * cosw0 - 2.0f * std::sqrt (A) * alpha) / a0;
     }
 
-    std::atomic<float>* distParam      = nullptr;
-    std::atomic<float>* bodyParam      = nullptr;
-    std::atomic<float>* dynamicParam   = nullptr;
-    std::atomic<float>* airLossParam   = nullptr;
-    std::atomic<float>* autoLevelParam = nullptr;
+    ParamRef distParam;
+    ParamRef bodyParam;
+    ParamRef dynamicParam;
+    ParamRef airLossParam;
+    ParamRef autoLevelParam;
 
     double sampleRate = 44100.0;
     float lsB0 = 1.0f, lsB1 = 0.0f, lsB2 = 0.0f, lsA1 = 0.0f, lsA2 = 0.0f;

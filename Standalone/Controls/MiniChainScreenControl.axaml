@@ -1,0 +1,82 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="ModularVoiceStudio.App.Controls.MiniChainScreenControl"
+             Height="105"
+             Cursor="Hand">
+    
+    <Border Name="RootBorder"
+            Background="#0B1218"
+            BorderBrush="#253E50"
+            BorderThickness="1.2"
+            CornerRadius="6"
+            Padding="6"
+            PointerEntered="OnPointerEntered"
+            PointerExited="OnPointerExited"
+            PointerPressed="OnPointerPressed">
+        
+        <Grid RowDefinitions="Auto,*,Auto">
+            <!-- Screen Header -->
+            <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                <TextBlock Text="DSP CHAIN"
+                           FontSize="9"
+                           FontWeight="Bold"
+                           Foreground="#00B4D8"
+                           VerticalAlignment="Center"/>
+                
+                <!-- Power/Bypass Button -->
+                <Button Name="PowerBtn"
+                        Grid.Column="1"
+                        Width="18"
+                        Height="18"
+                        Padding="0"
+                        Background="#102028"
+                        BorderBrush="#00E676"
+                        BorderThickness="1"
+                        CornerRadius="9"
+                        Click="OnPowerClicked">
+                    <Ellipse Width="6" Height="6" Fill="#00E676" />
+                </Button>
+            </Grid>
+
+            <!-- Schematic Canvas / Signal Flow -->
+            <Canvas Grid.Row="1" Name="SchematicCanvas" Margin="0,4">
+                <!-- Connecting Cable Line -->
+                <Line StartPoint="8,22" EndPoint="170,22" Stroke="#3300B4D8" StrokeThickness="2" />
+                
+                <!-- Live Pulse Dot -->
+                <Ellipse Name="PulseDot" Width="8" Height="8" Fill="#00E676" Canvas.Left="20" Canvas.Top="18" Opacity="0.8" />
+
+                <!-- Nodes -->
+                <Border Canvas.Left="8" Canvas.Top="13" Width="24" Height="18" Background="#141C24" BorderBrush="#00B4D8" BorderThickness="1" CornerRadius="3">
+                    <TextBlock Text="IN" FontSize="8" FontWeight="Bold" Foreground="#00B4D8" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+
+                <Border Canvas.Left="56" Canvas.Top="13" Width="24" Height="18" Background="#141C24" BorderBrush="#9C27B0" BorderThickness="1" CornerRadius="3">
+                    <TextBlock Text="AI" FontSize="8" FontWeight="Bold" Foreground="#BA68C8" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+
+                <Border Canvas.Left="104" Canvas.Top="13" Width="24" Height="18" Background="#141C24" BorderBrush="#00B4D8" BorderThickness="1" CornerRadius="3">
+                    <TextBlock Text="EQ" FontSize="8" FontWeight="Bold" Foreground="#00B4D8" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+
+                <Border Canvas.Left="150" Canvas.Top="13" Width="24" Height="18" Background="#141C24" BorderBrush="#00E676" BorderThickness="1" CornerRadius="3">
+                    <TextBlock Text="OUT" FontSize="8" FontWeight="Bold" Foreground="#00E676" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+            </Canvas>
+
+            <!-- Interactive Open Canvas Hint -->
+            <Border Grid.Row="2"
+                    Name="HintOverlay"
+                    Background="#D9080C10"
+                    CornerRadius="3"
+                    Padding="4,2"
+                    HorizontalAlignment="Stretch">
+                <TextBlock Text="CLICK TO OPEN CANVAS 🎛️"
+                           FontSize="8.5"
+                           FontWeight="Bold"
+                           Foreground="#00E5FF"
+                           HorizontalAlignment="Center" />
+            </Border>
+        </Grid>
+    </Border>
+</UserControl>

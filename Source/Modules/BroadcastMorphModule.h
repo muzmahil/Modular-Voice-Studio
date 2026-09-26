@@ -24,11 +24,11 @@ public:
     BroadcastMorphModule()
         : ModuleProcessor ("Broadcast Morph", createLayout())
     {
-        profileParam = apvts.getRawParameterValue ("profile");
-        morphParam   = apvts.getRawParameterValue ("morph");
-        driveParam   = apvts.getRawParameterValue ("drive");
-        tiltParam    = apvts.getRawParameterValue ("tilt");
-        outputParam  = apvts.getRawParameterValue ("output");
+        profileParam = getModuleParam ("profile", 0.0f);
+        morphParam   = getModuleParam ("morph", 100.0f);
+        driveParam   = getModuleParam ("drive", 15.0f);
+        tiltParam    = getModuleParam ("tilt", 0.0f);
+        outputParam  = getModuleParam ("output", 0.0f);
 
         for (int b = 0; b < numBands; ++b)
             liveSpectrum[b].store (0.0f);
@@ -48,11 +48,11 @@ public:
         const int numSamples  = buffer.getNumSamples();
         if (numChannels == 0 || numSamples == 0) return;
 
-        int profile = juce::jlimit (0, (int) NumProfiles - 1, (int) profileParam->load());
-        float morphNorm = juce::jlimit (0.0f, 1.0f, morphParam->load() * 0.01f);
-        float driveNorm = juce::jlimit (0.0f, 1.0f, driveParam->load() * 0.01f);
-        float tiltDb    = tiltParam->load();
-        float outputDb  = outputParam->load();
+        int profile = juce::jlimit (0, (int) NumProfiles - 1, (int) profileParam.get (0.0f));
+        float morphNorm = juce::jlimit (0.0f, 1.0f, morphParam.get (100.0f) * 0.01f);
+        float driveNorm = juce::jlimit (0.0f, 1.0f, driveParam.get (15.0f) * 0.01f);
+        float tiltDb    = tiltParam.get (0.0f);
+        float outputDb  = outputParam.get (0.0f);
         float outGainLin= juce::Decibels::decibelsToGain (outputDb);
 
         updateProfileCoefficients (profile, tiltDb);
@@ -143,8 +143,8 @@ public:
 
     juce::AudioProcessorEditor* createEditor() override;
 
-    int   getProfileIndex() const     { return profileParam ? (int) profileParam->load() : 0; }
-    void  setProfileIndex (int idx)   { if (auto* p = apvts.getParameter ("profile")) p->setValueNotifyingHost (p->convertTo0to1 ((float) idx)); }
+    int   getProfileIndex() const     { return (int) profileParam.get (0.0f); }
+    void  setProfileIndex (int idx)   { profileParam.set ((float) idx); }
     float getLiveInputPeak() const    { return liveInputPeak.load (std::memory_order_relaxed); }
     float getLiveOutputPeak() const   { return liveOutputPeak.load (std::memory_order_relaxed); }
     float getBandEnergy (int b) const { return liveSpectrum[juce::jlimit (0, numBands - 1, b)].load (std::memory_order_relaxed); }
@@ -332,11 +332,11 @@ private:
         a_hs2 = ((A + 1.0f) - (A - 1.0f) * cosw0 - 2.0f * std::sqrt (A) * alpha) / a0;
     }
 
-    std::atomic<float>* profileParam = nullptr;
-    std::atomic<float>* morphParam   = nullptr;
-    std::atomic<float>* driveParam   = nullptr;
-    std::atomic<float>* tiltParam    = nullptr;
-    std::atomic<float>* outputParam  = nullptr;
+    ParamRef profileParam;
+    ParamRef morphParam;
+    ParamRef driveParam;
+    ParamRef tiltParam;
+    ParamRef outputParam;
 
     double sampleRate = 44100.0;
 

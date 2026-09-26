@@ -1,0 +1,181 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="using:ModularVoiceStudio.App.Controls"
+        x:Class="ModularVoiceStudio.App.Views.EffectSettingsWindow"
+        Title="Effect Parameters"
+        Width="540" Height="620"
+        MinWidth="480" MinHeight="440"
+        WindowStartupLocation="CenterOwner"
+        SystemDecorations="None"
+        Background="#181818"
+        Foreground="#E0E0E0">
+
+    <Window.Styles>
+        <Style Selector="Button.studio-btn">
+            <Setter Property="Background" Value="#28282C" />
+            <Setter Property="BorderBrush" Value="#3E3E48" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="2" />
+            <Setter Property="Padding" Value="10,4" />
+            <Setter Property="FontSize" Value="8.5" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Foreground" Value="#CCCCCC" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="Button.studio-btn:pointerover">
+            <Setter Property="Background" Value="#34343B" />
+            <Setter Property="BorderBrush" Value="#555562" />
+            <Setter Property="Foreground" Value="#FFFFFF" />
+        </Style>
+
+        <Style Selector="Button.preset-pill">
+            <Setter Property="Background" Value="#242830" />
+            <Setter Property="BorderBrush" Value="#3B4452" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="2" />
+            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="FontSize" Value="8.0" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Foreground" Value="#93C5FD" />
+            <Setter Property="Margin" Value="0,0,5,5" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="Button.preset-pill:pointerover">
+            <Setter Property="Background" Value="#2D3748" />
+            <Setter Property="BorderBrush" Value="#60A5FA" />
+            <Setter Property="Foreground" Value="#FFFFFF" />
+        </Style>
+
+        <!-- Custom Studio Fader Styling for Sliders -->
+        <Style Selector="Slider /template/ RepeatButton">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Background="Transparent" />
+                </ControlTemplate>
+            </Setter>
+        </Style>
+
+        <Style Selector="Slider:horizontal">
+            <Setter Property="MinHeight" Value="24" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Grid VerticalAlignment="Center">
+                        <Border Height="6" Background="#141414" BorderBrush="#2B2B2B" BorderThickness="1" CornerRadius="3" Margin="0,0" VerticalAlignment="Center" />
+                        <Track Name="PART_Track"
+                               Orientation="Horizontal"
+                               Minimum="{TemplateBinding Minimum}"
+                               Maximum="{TemplateBinding Maximum}"
+                               Value="{TemplateBinding Value, Mode=TwoWay}"
+                               IsDirectionReversed="{TemplateBinding IsDirectionReversed}">
+                            <Track.DecreaseButton>
+                                <RepeatButton Name="PART_DecreaseButton" Focusable="False" IsTabStop="False">
+                                    <RepeatButton.Template>
+                                        <ControlTemplate><Border Background="Transparent" /></ControlTemplate>
+                                    </RepeatButton.Template>
+                                </RepeatButton>
+                            </Track.DecreaseButton>
+                            <Track.IncreaseButton>
+                                <RepeatButton Name="PART_IncreaseButton" Focusable="False" IsTabStop="False">
+                                    <RepeatButton.Template>
+                                        <ControlTemplate><Border Background="Transparent" /></ControlTemplate>
+                                    </RepeatButton.Template>
+                                </RepeatButton>
+                            </Track.IncreaseButton>
+                            <Thumb Name="PART_Thumb" Width="14" Height="20" Cursor="SizeWestEast">
+                                <Thumb.Template>
+                                    <ControlTemplate>
+                                        <Border Name="FaderCapBorder" Background="#383838" BorderBrush="#777777" BorderThickness="1.5" CornerRadius="2" BoxShadow="0 2 4 0 #60000000">
+                                            <Rectangle Width="2" Height="10" Fill="#E0E0E0" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                    </ControlTemplate>
+                                </Thumb.Template>
+                            </Thumb>
+                        </Track>
+                    </Grid>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+
+        <Style Selector="Slider /template/ Thumb:pointerover Border#FaderCapBorder">
+            <Setter Property="Background" Value="#4C4C4C" />
+            <Setter Property="BorderBrush" Value="#AAAAAA" />
+        </Style>
+    </Window.Styles>
+
+    <!-- Main Solid Outer Chassis Frame -->
+    <Border BorderBrush="#5C667A" BorderThickness="2" CornerRadius="6" Background="#181818" ClipToBounds="True">
+        <Grid RowDefinitions="44,Auto,Auto,*,36">
+            
+            <!-- 1. Top Header Bar -->
+            <Border Grid.Row="0" Background="#242424" BorderBrush="#333333" BorderThickness="0,0,0,1.2"
+                    Height="44" Padding="14,0" PointerPressed="OnTitleBarPointerPressed">
+                <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <Border Background="#1E3A5F" BorderBrush="#2563EB" BorderThickness="1" CornerRadius="2" Padding="6,2">
+                            <TextBlock Text="DSP MODULE" FontSize="7.5" FontWeight="Black" Foreground="#38BDF8" />
+                        </Border>
+                        <TextBlock x:Name="TxtWindowTitle" Text="EFFECT SETTINGS"
+                                   FontSize="11" FontWeight="Black" Foreground="#F0F0F0" VerticalAlignment="Center" />
+                    </StackPanel>
+
+                    <Button Grid.Column="2" x:Name="BtnVstGui" Content="OPEN VST GUI"
+                            Classes="studio-btn" Margin="0,0,8,0" IsVisible="False"
+                            Click="OnOpenVstGuiClicked" />
+
+                    <Button Grid.Column="3" Width="26" Height="24" Background="Transparent" Foreground="#EF4444"
+                            Click="OnCloseClicked" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <TextBlock Text="✕" FontSize="11" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Button>
+                </Grid>
+            </Border>
+
+            <!-- 2. Header Info & Presets Panel -->
+            <Border Grid.Row="1" Background="#202020" BorderBrush="#333333" BorderThickness="0,0,0,1" Padding="14,10">
+                <StackPanel Spacing="8">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0">
+                            <TextBlock x:Name="TxtEffectName" Text="PITCH SHIFTER" FontSize="13" FontWeight="Black" Foreground="#FFFFFF" />
+                            <TextBlock x:Name="TxtEffectDesc" Text="Vocal processor node" FontSize="8.5" Foreground="#888888" Margin="0,2,0,0" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Content="RESET ALL" Classes="studio-btn" Click="OnResetAllClicked" />
+                    </Grid>
+
+                    <!-- Quick Presets -->
+                    <StackPanel x:Name="PanelPresetsSection" Spacing="4">
+                        <TextBlock Text="STUDIO PRESETS &amp; SNAPSHOTS:" FontSize="7.5" FontWeight="Bold" Foreground="#888888" />
+                        <WrapPanel x:Name="PanelPresets" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- 3. Dynamic Real-time Visualizer Graph -->
+            <Border Grid.Row="2" Height="90" Margin="12,8,12,2" Background="#141414" BorderBrush="#2B2B2B" BorderThickness="1" CornerRadius="3" ClipToBounds="True">
+                <controls:DSPVisualizerControl x:Name="Visualizer" />
+            </Border>
+
+            <!-- 4. Rotary Knobs & Sliders Container -->
+            <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto" Padding="12,6">
+                <StackPanel Spacing="8">
+                    <!-- Primary Knob Dials (Grid of Rotary Knobs) -->
+                    <WrapPanel x:Name="PanelKnobs" HorizontalAlignment="Center" Margin="0,2" />
+
+                    <!-- Detailed Parameter Sliders List -->
+                    <StackPanel x:Name="ContainerParams" Spacing="4" />
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- 5. Footer -->
+            <Border Grid.Row="4" Background="#1C1C1C" BorderBrush="#2B2B2B" BorderThickness="0,1,0,0" Height="36" Padding="14,0">
+                <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+                    <TextBlock Grid.Column="0" Text="MVS ZERO-LATENCY 64-BIT DSP AUDIO ENGINE"
+                               FontSize="7.5" FontWeight="Bold" Foreground="#888888" VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Content="DONE" Classes="studio-btn" Height="24" Padding="14,2" Click="OnCloseClicked" VerticalAlignment="Center" />
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

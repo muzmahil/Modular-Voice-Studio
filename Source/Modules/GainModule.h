@@ -11,7 +11,7 @@ public:
     GainModule()
         : ModuleProcessor ("Gain", createLayout())
     {
-        gainParam = apvts.getRawParameterValue ("gain");
+        gainParam = getModuleParam ("gain", 0.0f);
     }
 
     void prepareToPlay (double, int) override {}
@@ -23,7 +23,7 @@ public:
         const int numSamples  = buffer.getNumSamples();
         if (numChannels == 0 || numSamples == 0) return;
 
-        float currentDb = gainParam->load();
+        float currentDb = gainParam.get (0.0f);
         float linearGain = juce::Decibels::decibelsToGain (currentDb, -100.0f);
 
         float inPeak = 0.0f;
@@ -60,7 +60,7 @@ private:
         ) };
     }
 
-    std::atomic<float>* gainParam = nullptr;
+    ParamRef gainParam;
     std::atomic<float> liveInPeak { 0.0f };
     std::atomic<float> liveOutPeak { 0.0f };
 };

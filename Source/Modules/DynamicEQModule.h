@@ -13,11 +13,11 @@ public:
     DynamicEQModule()
         : ModuleProcessor ("Dynamic EQ", createLayout())
     {
-        freqParam   = apvts.getRawParameterValue ("frequency");
-        qParam      = apvts.getRawParameterValue ("q");
-        threshParam = apvts.getRawParameterValue ("threshold");
-        dynGainParam= apvts.getRawParameterValue ("dynGain");
-        staticParam = apvts.getRawParameterValue ("staticGain");
+        freqParam   = getModuleParam ("frequency", 3200.0f);
+        qParam      = getModuleParam ("q", 2.5f);
+        threshParam = getModuleParam ("threshold", -24.0f);
+        dynGainParam= getModuleParam ("dynGain", -6.0f);
+        staticParam = getModuleParam ("staticGain", 0.0f);
 
         for (int b = 0; b < numBands; ++b)
             liveSpectrum[b].store (0.0f);
@@ -39,11 +39,11 @@ public:
         const int numSamples  = buffer.getNumSamples();
         if (numChannels == 0 || numSamples == 0) return;
 
-        float freq       = juce::jlimit (80.0f, 12000.0f, freqParam->load());
-        float q          = juce::jlimit (0.5f, 8.0f, qParam->load());
-        float threshDb   = threshParam->load();
-        float maxDynGain = dynGainParam->load(); // e.g. -12 dB (cut) or +6 dB (boost)
-        float statGain   = staticParam->load();
+        float freq       = juce::jlimit (80.0f, 12000.0f, freqParam.get (3200.0f));
+        float q          = juce::jlimit (0.5f, 8.0f, qParam.get (2.5f));
+        float threshDb   = threshParam.get (-24.0f);
+        float maxDynGain = dynGainParam.get (-6.0f); // e.g. -12 dB (cut) or +6 dB (boost)
+        float statGain   = staticParam.get (0.0f);
 
         updateSidechainBP (freq, q);
 
@@ -145,9 +145,9 @@ public:
 
     float getLiveDynamicOffset() const { return liveDynamicOffset.load (std::memory_order_relaxed); }
     float getLiveBandEnergy() const    { return liveBandEnergy.load (std::memory_order_relaxed); }
-    float getFrequency() const         { return freqParam ? freqParam->load() : 2500.0f; }
-    float getThresholdDb() const       { return threshParam ? threshParam->load() : -24.0f; }
-    float getStaticGain() const        { return staticParam ? staticParam->load() : 0.0f; }
+    float getFrequency() const         { return freqParam.get (2500.0f); }
+    float getThresholdDb() const       { return threshParam.get (-24.0f); }
+    float getStaticGain() const        { return staticParam.get (0.0f); }
     float getSpectrumBand (int b) const{ return liveSpectrum[juce::jlimit (0, numBands - 1, b)].load (std::memory_order_relaxed); }
 
 private:
@@ -215,11 +215,11 @@ private:
         pkA2 = (1.0f - alpha / A) / a0;
     }
 
-    std::atomic<float>* freqParam    = nullptr;
-    std::atomic<float>* qParam       = nullptr;
-    std::atomic<float>* threshParam  = nullptr;
-    std::atomic<float>* dynGainParam = nullptr;
-    std::atomic<float>* staticParam  = nullptr;
+    ParamRef freqParam;
+    ParamRef qParam;
+    ParamRef threshParam;
+    ParamRef dynGainParam;
+    ParamRef staticParam;
 
     double sampleRate = 44100.0;
     float bpB0 = 0.0f, bpB1 = 0.0f, bpB2 = 0.0f, bpA1 = 0.0f, bpA2 = 0.0f;

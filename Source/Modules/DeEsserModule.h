@@ -23,13 +23,13 @@ public:
     DeEsserModule()
         : ModuleProcessor ("De-Esser", createLayout())
     {
-        processingParam = apvts.getRawParameterValue ("processing");
-        freqRangeParam  = apvts.getRawParameterValue ("freqRange");
-        intensityParam  = apvts.getRawParameterValue ("intensity");
-        sharpnessParam  = apvts.getRawParameterValue ("sharpness");
-        makeupParam     = apvts.getRawParameterValue ("makeup");
-        diffParam       = apvts.getRawParameterValue ("diff");
-        filterParam     = apvts.getRawParameterValue ("filter");
+        processingParam = getModuleParam ("processing", 55.0f);
+        freqRangeParam  = getModuleParam ("freqRange", 2.0f);
+        intensityParam  = getModuleParam ("intensity", 5.5f);
+        sharpnessParam  = getModuleParam ("sharpness", 14.0f);
+        makeupParam     = getModuleParam ("makeup", 0.0f);
+        diffParam       = getModuleParam ("diff", 0.0f);
+        filterParam     = getModuleParam ("filter", 0.0f);
 
         for (int b = 0; b < numBands; ++b)
             liveSpectrum[b].store (0.0f);
@@ -52,13 +52,13 @@ public:
         if (numChannels == 0 || numSamples == 0) return;
 
         // Parameters
-        float procAmount   = juce::jlimit (0.0f, 100.0f, processingParam->load()); // 0 to 100%
-        int rangeIdx       = juce::jlimit (0, 3, (int) freqRangeParam->load());
-        float intensity    = juce::jlimit (1.0f, 10.0f, intensityParam->load());  // Ratio
-        float sharpness    = juce::jlimit (4.0f, 24.0f, sharpnessParam->load());  // Filter Q / slope
-        float makeupGain   = juce::Decibels::decibelsToGain (makeupParam->load());
-        bool diffAudition  = diffParam->load() > 0.5f;
-        bool filterAudition= filterParam->load() > 0.5f;
+        float procAmount   = juce::jlimit (0.0f, 100.0f, processingParam.get (55.0f)); // 0 to 100%
+        int rangeIdx       = juce::jlimit (0, 3, (int) freqRangeParam.get (2.0f));
+        float intensity    = juce::jlimit (1.0f, 10.0f, intensityParam.get (5.5f));  // Ratio
+        float sharpness    = juce::jlimit (4.0f, 24.0f, sharpnessParam.get (14.0f));  // Filter Q / slope
+        float makeupGain   = juce::Decibels::decibelsToGain (makeupParam.get (0.0f));
+        bool diffAudition  = diffParam.get (0.0f) > 0.5f;
+        bool filterAudition= filterParam.get (0.0f) > 0.5f;
 
         // Determine Center Frequency & Q from Range & Sharpness
         float centerFreq = 8200.0f;
@@ -202,7 +202,7 @@ public:
     float getLiveOutPeak() const      { return liveOutPeak.load (std::memory_order_relaxed); }
     float getCenterFreq() const
     {
-        int rangeIdx = freqRangeParam ? (int) freqRangeParam->load() : 2;
+        int rangeIdx = (int) freqRangeParam.get (2.0f);
         switch (rangeIdx)
         {
             case 0: return 3800.0f;
@@ -310,13 +310,13 @@ private:
         a2 = (1.0f - alpha / A) / a0;
     }
 
-    std::atomic<float>* processingParam = nullptr;
-    std::atomic<float>* freqRangeParam  = nullptr;
-    std::atomic<float>* intensityParam  = nullptr;
-    std::atomic<float>* sharpnessParam  = nullptr;
-    std::atomic<float>* makeupParam     = nullptr;
-    std::atomic<float>* diffParam       = nullptr;
-    std::atomic<float>* filterParam     = nullptr;
+    ParamRef processingParam;
+    ParamRef freqRangeParam;
+    ParamRef intensityParam;
+    ParamRef sharpnessParam;
+    ParamRef makeupParam;
+    ParamRef diffParam;
+    ParamRef filterParam;
 
     double sampleRate = 44100.0;
 

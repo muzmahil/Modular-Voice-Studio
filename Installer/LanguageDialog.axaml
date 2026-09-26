@@ -1,0 +1,50 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="ModularVoiceStudio.Installer.LanguageDialog"
+        Title="Select Setup Language"
+        Width="460" Height="250"
+        CanResize="False"
+        WindowStartupLocation="CenterScreen"
+        SystemDecorations="None"
+        Background="#F5F5F5">
+
+    <Border BorderBrush="#CCCCCC" BorderThickness="1" CornerRadius="8" ClipToBounds="True">
+        <Grid RowDefinitions="50,*,56">
+            <!-- Black Top Bar -->
+            <Grid Grid.Row="0" Background="#000000" ColumnDefinitions="Auto,*,Auto" PointerPressed="OnTopBarPointerPressed">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0" Spacing="8">
+                    <Image Width="22" Height="22" Source="avares://ModularVoiceStudio_Setup/Assets/logo.png" VerticalAlignment="Center" />
+                    <TextBlock Text="Modular Voice Studio" FontWeight="Bold" FontSize="15" Foreground="#FFFFFF" VerticalAlignment="Center" />
+                    <TextBlock Text="LANGUAGE" FontSize="10" FontWeight="SemiBold" Foreground="#888888" VerticalAlignment="Center" Margin="6,0,0,0" LetterSpacing="1" />
+                </StackPanel>
+                <Button Grid.Column="2" Click="OnCancelClick" Width="32" Height="32" Background="Transparent" BorderThickness="0" Margin="0,0,10,0" Cursor="Hand">
+                    <TextBlock Text="✕" Foreground="#AAAAAA" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Button>
+                <!-- Blue accent line -->
+                <Border Grid.ColumnSpan="3" Height="2" Background="#0A84FF" VerticalAlignment="Bottom" />
+            </Grid>
+
+            <!-- Content Area -->
+            <Grid Grid.Row="1" Background="#F5F5F5" Margin="24,16,24,8">
+                <StackPanel Spacing="10" VerticalAlignment="Center">
+                    <StackPanel Spacing="3">
+                        <TextBlock Text="Select Setup Language / Kurulum Dilini Seçin" FontWeight="Bold" FontSize="14" Foreground="#1A1A1A" />
+                        <TextBlock Text="Select the language to use during the installation:" FontSize="12.5" Foreground="#555555" />
+                    </StackPanel>
+
+                    <!-- Language ComboBox -->
+                    <ComboBox x:Name="CmbLanguages" HorizontalAlignment="Stretch" Height="36" Background="#FFFFFF" BorderBrush="#CCCCCC" BorderThickness="1" CornerRadius="4" Padding="12,6" FontSize="13" Foreground="#1A1A1A" Cursor="Hand" />
+                </StackPanel>
+            </Grid>
+
+            <!-- Bottom Button Bar -->
+            <Grid Grid.Row="2" Background="#ECECEC">
+                <Border Height="1" Background="#E0E0E0" VerticalAlignment="Top" />
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,24,0" Spacing="12">
+                    <Button Click="OnCancelClick" Content="Cancel" Width="90" Height="32" Background="#DEDEDE" Foreground="#333333" BorderThickness="1" BorderBrush="#CCCCCC" CornerRadius="4" FontWeight="SemiBold" FontSize="12" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Cursor="Hand" />
+                    <Button Click="OnOkClick" Content="OK" Width="90" Height="32" Background="#0A84FF" Foreground="#FFFFFF" BorderThickness="0" CornerRadius="4" FontWeight="Bold" FontSize="12" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Cursor="Hand" />
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

@@ -27,9 +27,9 @@ public:
     DeBreathModule()
         : ModuleProcessor ("De-Breath", createLayout())
     {
-        reductionParam   = apvts.getRawParameterValue ("reduction");
-        sensitivityParam = apvts.getRawParameterValue ("sensitivity");
-        thresholdParam   = apvts.getRawParameterValue ("threshold");
+        reductionParam   = getModuleParam ("reduction", 70.0f);
+        sensitivityParam = getModuleParam ("sensitivity", 55.0f);
+        thresholdParam   = getModuleParam ("threshold", -38.0f);
 
         for (int i = 0; i < historySize; ++i)
             history[i] = { 0.0f, 0.0f, 0.0f };
@@ -62,9 +62,9 @@ public:
         const int numSamples  = buffer.getNumSamples();
         if (numChannels == 0 || numSamples == 0) return;
 
-        float reductionNorm = juce::jlimit (0.0f, 100.0f, reductionParam->load()) * 0.01f;
-        float sensitivity   = juce::jlimit (0.0f, 100.0f, sensitivityParam->load()) * 0.01f;
-        float threshDb      = thresholdParam->load();
+        float reductionNorm = juce::jlimit (0.0f, 100.0f, reductionParam.get (70.0f)) * 0.01f;
+        float sensitivity   = juce::jlimit (0.0f, 100.0f, sensitivityParam.get (55.0f)) * 0.01f;
+        float threshDb      = thresholdParam.get (-38.0f);
         float threshLin     = juce::Decibels::decibelsToGain (threshDb);
 
         // Maximum attenuation in linear gain (e.g. -24 dB max reduction)
@@ -192,9 +192,9 @@ private:
         };
     }
 
-    std::atomic<float>* reductionParam   = nullptr;
-    std::atomic<float>* sensitivityParam = nullptr;
-    std::atomic<float>* thresholdParam   = nullptr;
+    ParamRef reductionParam;
+    ParamRef sensitivityParam;
+    ParamRef thresholdParam;
 
     double sampleRate = 44100.0;
     float currentGain = 1.0f;

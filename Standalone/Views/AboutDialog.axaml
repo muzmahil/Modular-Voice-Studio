@@ -1,0 +1,70 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="ModularVoiceStudio.App.Views.AboutDialog"
+        Title="About Modular Voice Studio"
+        Width="440"
+        Height="320"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        Background="#181818"
+        Foreground="#E0E0E0">
+
+    <Border BorderBrush="#5C667A" BorderThickness="1.5" Background="#181818" Padding="20">
+        <Grid RowDefinitions="Auto,*,Auto">
+            
+            <!-- Header Logo -->
+            <StackPanel Grid.Row="0" Spacing="6" HorizontalAlignment="Center" Margin="0,0,0,16">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                    <TextBlock Text="MVS" FontSize="24" FontWeight="Black" FontFamily="Helvetica, Inter, sans-serif" Foreground="#F0F0F0" />
+                    <Border Background="#333333" BorderBrush="#444444" BorderThickness="1" CornerRadius="2" Padding="6,2" Margin="10,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="STANDALONE v1.0" FontSize="8.5" FontWeight="Bold" Foreground="#38BDF8" />
+                    </Border>
+                </StackPanel>
+                <TextBlock Text="Modular Voice Studio Pro Audio DSP Engine" FontSize="10" FontWeight="Bold" Foreground="#888888" HorizontalAlignment="Center" />
+            </StackPanel>
+
+            <!-- Info Box -->
+            <Border Grid.Row="1" Background="#202020" BorderBrush="#333333" BorderThickness="1" CornerRadius="4" Padding="14,12">
+                <StackPanel Spacing="8">
+                    <Grid ColumnDefinitions="Auto,*">
+                        <TextBlock Grid.Column="0" Text="Architecture:" FontSize="9.5" FontWeight="Bold" Foreground="#888888" Width="100" />
+                        <TextBlock Grid.Column="1" Text="64-bit Double Precision Hybrid DSP" FontSize="9.5" FontWeight="Bold" Foreground="#EEEEEE" />
+                    </Grid>
+                    <Grid ColumnDefinitions="Auto,*">
+                        <TextBlock Grid.Column="0" Text="Sample Rate:" FontSize="9.5" FontWeight="Bold" Foreground="#888888" Width="100" />
+                        <TextBlock Grid.Column="1" Text="48.0 kHz Broadcast Standard / 24-bit" FontSize="9.5" FontWeight="Bold" Foreground="#EEEEEE" />
+                    </Grid>
+                    <Grid ColumnDefinitions="Auto,*">
+                        <TextBlock Grid.Column="0" Text="Latency:" FontSize="9.5" FontWeight="Bold" Foreground="#888888" Width="100" />
+                        <TextBlock Grid.Column="1" Text="Ultra Low Latency (&amp;lt; 2.7 ms)" FontSize="9.5" FontWeight="Bold" Foreground="#10B981" />
+                    </Grid>
+                    <Grid ColumnDefinitions="Auto,*">
+                        <TextBlock Grid.Column="0" Text="Routing:" FontSize="9.5" FontWeight="Bold" Foreground="#888888" Width="100" />
+                        <TextBlock Grid.Column="1" Text="BUS B1 Virtual Mic + AUX A1 Direct Cue" FontSize="9.5" FontWeight="Bold" Foreground="#EEEEEE" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Close Button -->
+            <Button Grid.Row="2"
+                    Content="Close"
+                    FontSize="9.5"
+                    FontWeight="Bold"
+                    Width="90"
+                    Height="28"
+                    Padding="0"
+                    Background="#333333"
+                    Foreground="#FFFFFF"
+                    BorderBrush="#444444"
+                    BorderThickness="1"
+                    CornerRadius="3"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    HorizontalContentAlignment="Center"
+                    VerticalContentAlignment="Center"
+                    Margin="0,16,0,0"
+                    Click="OnCloseClicked" />
+
+        </Grid>
+    </Border>
+</Window>

@@ -1,0 +1,334 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="ModularVoiceStudio.App.Views.EffectChainWindow"
+        Title="Modular Voice Studio - Effect Chain"
+        Width="960"
+        Height="540"
+        CanResize="True"
+        MinWidth="680"
+        MinHeight="460"
+        SystemDecorations="None"
+        WindowStartupLocation="CenterScreen"
+        Icon="../Assets/icon.ico"
+        Background="#181818"
+        Foreground="#E0E0E0">
+
+    <Window.Styles>
+        <Style Selector="Button">
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="ToggleButton">
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+
+        <!-- Studio Hardware Button Base -->
+        <Style Selector="Button.rack-btn">
+            <Setter Property="Background" Value="#28282C" />
+            <Setter Property="BorderBrush" Value="#3E3E48" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="2" />
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="FontSize" Value="8.5" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Foreground" Value="#CCCCCC" />
+        </Style>
+        <Style Selector="Button.rack-btn:pointerover">
+            <Setter Property="Background" Value="#34343B" />
+            <Setter Property="BorderBrush" Value="#555562" />
+            <Setter Property="Foreground" Value="#FFFFFF" />
+        </Style>
+
+        <Style Selector="Button.rack-btn-accent">
+            <Setter Property="Background" Value="#242B38" />
+            <Setter Property="BorderBrush" Value="#3B4961" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="2" />
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="FontSize" Value="8.5" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Foreground" Value="#60A5FA" />
+        </Style>
+        <Style Selector="Button.rack-btn-accent:pointerover">
+            <Setter Property="Background" Value="#2D3748" />
+            <Setter Property="BorderBrush" Value="#60A5FA" />
+            <Setter Property="Foreground" Value="#FFFFFF" />
+        </Style>
+
+        <!-- Strip Mute Button -->
+        <Style Selector="ToggleButton.strip-mute">
+            <Setter Property="Background" Value="#242424" />
+            <Setter Property="BorderBrush" Value="#3D3D3D" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="Foreground" Value="#888888" />
+            <Setter Property="FontWeight" Value="ExtraBold" />
+            <Setter Property="FontSize" Value="8.5" />
+        </Style>
+        <Style Selector="ToggleButton.strip-mute:checked">
+            <Setter Property="Background" Value="#381313" />
+            <Setter Property="BorderBrush" Value="#EF4444" />
+            <Setter Property="Foreground" Value="#FCA5A5" />
+        </Style>
+
+        <!-- Strip Solo Button -->
+        <Style Selector="ToggleButton.strip-solo">
+            <Setter Property="Background" Value="#242424" />
+            <Setter Property="BorderBrush" Value="#3D3D3D" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="Foreground" Value="#888888" />
+            <Setter Property="FontWeight" Value="ExtraBold" />
+            <Setter Property="FontSize" Value="8.5" />
+        </Style>
+        <Style Selector="ToggleButton.strip-solo:checked">
+            <Setter Property="Background" Value="#3A2810" />
+            <Setter Property="BorderBrush" Value="#F59E0B" />
+            <Setter Property="Foreground" Value="#FDE68A" />
+        </Style>
+
+        <!-- Strip Bypass/Active Switch -->
+        <Style Selector="ToggleButton.strip-bypass">
+            <Setter Property="Background" Value="#14331E" />
+            <Setter Property="BorderBrush" Value="#059669" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="2" />
+            <Setter Property="Foreground" Value="#6EE7B7" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="FontSize" Value="7.5" />
+        </Style>
+        <Style Selector="ToggleButton.strip-bypass:checked">
+            <Setter Property="Background" Value="#5C3A1F" />
+            <Setter Property="BorderBrush" Value="#D97706" />
+            <Setter Property="Foreground" Value="#FDE68A" />
+        </Style>
+
+        <!-- Custom Studio Fader Styling -->
+        <Style Selector="Slider /template/ RepeatButton">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Background="Transparent" />
+                </ControlTemplate>
+            </Setter>
+        </Style>
+
+        <Style Selector="Slider:vertical">
+            <Setter Property="MinWidth" Value="28" />
+            <Setter Property="Width" Value="28" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Grid HorizontalAlignment="Center">
+                        <Border Width="4" Background="#0E0E0E" BorderBrush="#252525" BorderThickness="1" CornerRadius="2" Margin="0,4" HorizontalAlignment="Center" />
+                        <Track Name="PART_Track"
+                               Orientation="Vertical"
+                               Minimum="{TemplateBinding Minimum}"
+                               Maximum="{TemplateBinding Maximum}"
+                               Value="{TemplateBinding Value, Mode=TwoWay}"
+                               IsDirectionReversed="{TemplateBinding IsDirectionReversed}">
+                            <Track.DecreaseButton>
+                                <RepeatButton Name="PART_DecreaseButton" Focusable="False" IsTabStop="False">
+                                    <RepeatButton.Template>
+                                        <ControlTemplate><Border Background="Transparent" /></ControlTemplate>
+                                    </RepeatButton.Template>
+                                </RepeatButton>
+                            </Track.DecreaseButton>
+                            <Track.IncreaseButton>
+                                <RepeatButton Name="PART_IncreaseButton" Focusable="False" IsTabStop="False">
+                                    <RepeatButton.Template>
+                                        <ControlTemplate><Border Background="Transparent" /></ControlTemplate>
+                                    </RepeatButton.Template>
+                                </RepeatButton>
+                            </Track.IncreaseButton>
+                            <Thumb Name="PART_Thumb" Width="26" Height="14" Cursor="SizeNorthSouth">
+                                <Thumb.Template>
+                                    <ControlTemplate>
+                                        <Border Name="FaderCapBorder" Background="#383838" BorderBrush="#777777" BorderThickness="1.5" CornerRadius="3" BoxShadow="0 2 4 0 #60000000">
+                                            <Rectangle Width="14" Height="2" Fill="#E0E0E0" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                    </ControlTemplate>
+                                </Thumb.Template>
+                            </Thumb>
+                        </Track>
+                    </Grid>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+
+        <Style Selector="Slider /template/ Thumb:pointerover Border#FaderCapBorder">
+            <Setter Property="Background" Value="#4C4C4C" />
+            <Setter Property="BorderBrush" Value="#AAAAAA" />
+        </Style>
+    </Window.Styles>
+
+    <!-- Main Solid Outer Chassis Frame (Matches MainWindow) -->
+    <Border BorderBrush="#5C667A" BorderThickness="2" CornerRadius="6" Background="#181818" ClipToBounds="True">
+        <Grid RowDefinitions="46,*,42">
+            
+            <!-- 1. TOP HEADER (Identical to MainWindow Header) -->
+            <Border Grid.Row="0" Background="#242424" BorderBrush="#333333" BorderThickness="0,0,0,1.2" PointerPressed="OnTitleBarPointerPressed">
+                <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                    
+                    <!-- Left Title -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0,0,0">
+                        <TextBlock Text="MVS"
+                                   FontSize="20"
+                                   FontWeight="Black"
+                                   FontFamily="Helvetica, Inter, sans-serif"
+                                   Foreground="#F0F0F0"
+                                   VerticalAlignment="Center" />
+                        <Border Background="#333333" BorderBrush="#444444" BorderThickness="1" CornerRadius="2" Padding="5,1.5" Margin="8,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="EFFECT CHAIN RACK" FontSize="7.5" FontWeight="Bold" Foreground="#AAAAAA" />
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Center Signal Flow Badge -->
+                    <Border Grid.Column="1"
+                            Background="#1A1A1A"
+                            BorderBrush="#383838"
+                            BorderThickness="1"
+                            CornerRadius="3"
+                            Height="28"
+                            MaxWidth="480"
+                            Margin="16,0"
+                            Padding="10,0"
+                            HorizontalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="SIGNAL FLOW: " FontSize="7.5" FontWeight="Bold" Foreground="#888888" VerticalAlignment="Center" />
+                            <TextBlock Text="MODULAR VOICE STUDIO ➔ EFFECT CHAIN (1..N) ➔ MASTER OUTPUT"
+                                       FontSize="8" FontWeight="Bold" Foreground="#60A5FA" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Add Effect Flyout Button & Actions -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+                        <!-- Add Effect Flyout Button -->
+                        <Button Name="BtnAddEffect"
+                                Height="26"
+                                Classes="rack-btn-accent"
+                                Margin="0,0,8,0">
+                            <TextBlock Text="+ ADD EFFECT ▾" FontSize="8.5" FontWeight="Bold" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                            <Button.Flyout>
+                                <MenuFlyout Placement="Bottom">
+                                    <MenuItem Header="Creative Vocal FX">
+                                        <MenuItem Header="Pitch Shifter (Octave / Formant / Fine Tune)" Tag="Pitch Shifter" Click="OnInsertEffectClicked" />
+                                        <MenuItem Header="Studio Acoustic Reverb (Room / Hall / Ambience)" Tag="Reverb" Click="OnInsertEffectClicked" />
+                                        <MenuItem Header="Stereo Ping-Pong &amp; Echo Delay" Tag="Delay" Click="OnInsertEffectClicked" />
+                                        <MenuItem Header="Robot Voice (Ring Modulator &amp; Bitcrush)" Tag="Robot Voice" Click="OnInsertEffectClicked" />
+                                        <MenuItem Header="Stereo Vocal Doubler &amp; Chorus" Tag="Vocal Doubler" Click="OnInsertEffectClicked" />
+                                        <MenuItem Header="Tape &amp; Tube Saturation (Drive &amp; Warmth)" Tag="Saturation" Click="OnInsertEffectClicked" />
+                                    </MenuItem>
+                                    <Separator Background="#383838" />
+                                    <MenuItem Name="MenuInstalledVst" Header="Installed VST3 Plugins" />
+                                    <MenuItem Header="Browse .VST3 Plugin File..." Tag="VST3 Host" Click="OnInsertVSTPluginClicked" />
+                                    <MenuItem Header="Scan System VST3 Directories" Click="OnScanVSTClicked" />
+                                </MenuFlyout>
+                            </Button.Flyout>
+                        </Button>
+
+                        <!-- Clear Chain Button -->
+                        <Button Height="26"
+                                Classes="rack-btn"
+                                Click="OnClearChainClicked">
+                            <TextBlock Text="CLEAR ALL" FontSize="8.5" FontWeight="Bold" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                        </Button>
+                    </StackPanel>
+
+                    <!-- Window Min / Close Buttons -->
+                    <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0">
+                        <Button ToolTip.Tip="Minimize"
+                                Width="26"
+                                Height="24"
+                                Background="Transparent"
+                                Foreground="#888888"
+                                Margin="0,0,4,0"
+                                Click="OnMinimizeClicked">
+                            <TextBlock Text="—" FontSize="11" FontWeight="Bold" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                        </Button>
+                        <Button ToolTip.Tip="Close"
+                                Width="26"
+                                Height="24"
+                                Background="Transparent"
+                                Foreground="#EF4444"
+                                Click="OnCloseClicked">
+                            <TextBlock Text="✕" FontSize="11" FontWeight="Bold" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- 2. MAIN MIXER STRIPS CONTAINER -->
+            <Grid Grid.Row="1" Margin="10,8,10,6">
+                <!-- Empty State Message -->
+                <Border Name="PanelEmptyState"
+                        Background="#202020"
+                        BorderBrush="#333333"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Stretch"
+                        IsVisible="True">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
+                        <TextBlock Text="EFFECT CHAIN IS EMPTY" FontSize="13" FontWeight="Black" Foreground="#FFFFFF" HorizontalAlignment="Center" />
+                        <TextBlock Text="Click '+ ADD EFFECT ▾' above to insert vocal pitch shifters, reverbs, delays, or scanned VST3 plugins."
+                                   FontSize="9.5" Foreground="#888888" HorizontalAlignment="Center" TextAlignment="Center" MaxWidth="460" TextWrapping="Wrap" />
+                        <Button Height="30"
+                                Classes="rack-btn-accent"
+                                Margin="0,6,0,0"
+                                HorizontalAlignment="Center">
+                            <TextBlock Text="+ ADD EFFECT" FontSize="9" FontWeight="Bold" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                            <Button.Flyout>
+                                <MenuFlyout Placement="Bottom">
+                                    <MenuItem Header="Creative Vocal FX">
+                                        <MenuItem Header="Pitch Shifter (Octave / Formant / Fine Tune)" Tag="Pitch Shifter" Click="OnInsertEffectClicked" />
+                                        <MenuItem Header="Studio Acoustic Reverb (Room / Hall / Ambience)" Tag="Reverb" Click="OnInsertEffectClicked" />
+                                        <MenuItem Header="Stereo Ping-Pong &amp; Echo Delay" Tag="Delay" Click="OnInsertEffectClicked" />
+                                        <MenuItem Header="Robot Voice (Ring Modulator &amp; Bitcrush)" Tag="Robot Voice" Click="OnInsertEffectClicked" />
+                                        <MenuItem Header="Stereo Vocal Doubler &amp; Chorus" Tag="Vocal Doubler" Click="OnInsertEffectClicked" />
+                                        <MenuItem Header="Tape &amp; Tube Saturation (Drive &amp; Warmth)" Tag="Saturation" Click="OnInsertEffectClicked" />
+                                    </MenuItem>
+                                    <Separator Background="#383838" />
+                                    <MenuItem Name="MenuInstalledVstEmpty" Header="Installed VST3 Plugins" />
+                                    <MenuItem Header="Browse .VST3 Plugin File..." Tag="VST3 Host" Click="OnInsertVSTPluginClicked" />
+                                    <MenuItem Header="Scan System VST3 Directories" Click="OnScanVSTClicked" />
+                                </MenuFlyout>
+                            </Button.Flyout>
+                        </Button>
+                    </StackPanel>
+                </Border>
+
+                <!-- Mixer Strips Horizontal Scroll Area -->
+                <ScrollViewer Name="ScrollStrips"
+                              HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Disabled"
+                              IsVisible="False">
+                    <StackPanel Name="ContainerStrips" Orientation="Horizontal" Spacing="6" VerticalAlignment="Stretch" />
+                </ScrollViewer>
+            </Grid>
+
+            <!-- 3. FOOTER BAR -->
+            <Border Grid.Row="2" Background="#1C1C1C" BorderBrush="#2B2B2B" BorderThickness="0,1,0,0" Padding="14,0">
+                <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
+                    <TextBlock Name="TxtStripCount" Text="ACTIVE STRIPS: 0" FontSize="8" FontWeight="Bold" Foreground="#888888" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="SERIES RACK: SIGNAL FLOWS LEFT TO RIGHT. FADER CONTROLS EFFECT WET MIX."
+                               FontSize="7.5" FontWeight="Bold" Foreground="#666666" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    <Border Grid.Column="2" Background="#14331E" CornerRadius="2" Padding="6,2">
+                        <TextBlock Text="RACK ACTIVE" FontSize="8" FontWeight="Bold" Foreground="#34D399" />
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</Window>
