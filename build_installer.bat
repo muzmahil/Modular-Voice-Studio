@@ -75,7 +75,7 @@ if %ERRORLEVEL% neq 0 (
 echo.
 echo ============================================================
 echo   SUCCESS! All targets built and Installer packaged.
-echo   Installer: build\ModularVoiceStudio_artefacts\Release\ModularVoiceStudio_Setup.exe
+echo   Installer: dist\ModularVoiceStudio_Setup.exe
 echo ============================================================
 echo.
 pause

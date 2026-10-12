@@ -1,69 +1,119 @@
 # ==============================================================================
-# Modular Voice Studio - Automated Installer Package Builder
+# Modular Voice Studio - Professional Inno Setup Package Builder
 # ==============================================================================
 
 param(
     [string]$Configuration = "Release",
-    [string]$OutputDir = "build/ModularVoiceStudio_artefacts/Release"
+    [switch]$SkipPublish = $false
 )
 
 $ErrorActionPreference = "Stop"
 $ScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Definition
 
 Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host "  Modular Voice Studio - Installer Packaging" -ForegroundColor Cyan
+Write-Host "  Modular Voice Studio - Installer Packaging (Inno Setup 6)" -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
 
-$ReleaseDir = Join-Path $ScriptRoot "build/ModularVoiceStudio_artefacts/$Configuration"
-$PayloadDir = Join-Path $ScriptRoot "Installer/Payload"
-$TempStaging = Join-Path $ScriptRoot "Installer/PayloadStaging"
-$ZipTarget = Join-Path $PayloadDir "payload.zip"
+# 1. Locate Inno Setup Compiler (ISCC.exe)
+$IsccCandidates = @(
+    "C:\Users\isu\AppData\Local\Programs\Inno Setup 6\ISCC.exe",
+    (Join-Path ${env:LOCALAPPDATA} "Programs\Inno Setup 6\ISCC.exe"),
+    (Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe"),
+    (Join-Path ${env:ProgramFiles} "Inno Setup 6\ISCC.exe")
+)
 
-# 1. Clean and prepare payload directories
-if (Test-Path $TempStaging) { Remove-Item $TempStaging -Recurse -Force }
-if (Test-Path $ZipTarget) { Remove-Item $ZipTarget -Force }
-New-Item -ItemType Directory -Path $TempStaging -Force | Out-Null
-New-Item -ItemType Directory -Path $PayloadDir -Force | Out-Null
-
-# 2. Copy VST3 bundle if present
-$Vst3Source = Join-Path $ReleaseDir "VST3/Modular Voice Studio.vst3"
-if (Test-Path $Vst3Source) {
-    Write-Host "[+] Packaging VST3 plugin..." -ForegroundColor Green
-    Copy-Item $Vst3Source (Join-Path $TempStaging "Modular Voice Studio.vst3") -Recurse -Force
-} else {
-    Write-Warning "VST3 plugin not found at $Vst3Source"
+$IsccExe = $null
+foreach ($path in $IsccCandidates) {
+    if ($path -and (Test-Path $path)) {
+        $IsccExe = $path
+        break
+    }
 }
 
-# 3. Copy VST2 dll if present
-$Vst2Source = Join-Path $ReleaseDir "VST/Modular Voice Studio.dll"
-if (Test-Path $Vst2Source) {
-    Write-Host "[+] Packaging VST2 plugin..." -ForegroundColor Green
-    Copy-Item $Vst2Source (Join-Path $TempStaging "Modular Voice Studio.dll") -Force
-} else {
-    Write-Warning "VST2 plugin not found at $Vst2Source"
+if (-not $IsccExe) {
+    $cmd = Get-Command "iscc.exe" -ErrorAction SilentlyContinue
+    if ($cmd) {
+        $IsccExe = $cmd.Source
+    }
 }
 
-# 4. Create ZIP payload
-Write-Host "[+] Compressing payload.zip..." -ForegroundColor Green
-Compress-Archive -Path "$TempStaging/*" -DestinationPath $ZipTarget -Force
-Remove-Item $TempStaging -Recurse -Force
+if (-not $IsccExe) {
+    Write-Error "Inno Setup 6 (ISCC.exe) was not found. Please install Inno Setup 6 to compile the installer."
+    exit 1
+}
 
-# 5. Publish Installer as a single-file executable
-Write-Host "[+] Publishing standalone installer executable..." -ForegroundColor Green
-$InstallerProj = Join-Path $ScriptRoot "Installer/ModularVoiceStudio.Installer.csproj"
-$DistDir = Join-Path $ScriptRoot "dist/installer"
-New-Item -ItemType Directory -Path $DistDir -Force | Out-Null
+Write-Host "[+] Using Inno Setup Compiler: $IsccExe" -ForegroundColor Gray
 
-dotnet publish $InstallerProj -c $Configuration -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o $DistDir
+# 2. Publish Standalone Application (Self-Contained x64)
+$StandaloneDir = Join-Path $ScriptRoot "dist/Standalone"
+if (-not $SkipPublish) {
+    Write-Host "[+] Publishing Standalone Application (self-contained win-x64)..." -ForegroundColor Green
+    $StandaloneProj = Join-Path $ScriptRoot "Standalone/ModularVoiceStudio.App.csproj"
+    dotnet publish $StandaloneProj -c $Configuration -r win-x64 --self-contained true -o $StandaloneDir
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "dotnet publish failed for Standalone application."
+        exit 1
+    }
+}
 
-$BuiltExe = Join-Path $DistDir "ModularVoiceStudio_Setup.exe"
-if (Test-Path $BuiltExe) {
-    $TargetReleaseExe = Join-Path $ReleaseDir "ModularVoiceStudio_Setup.exe"
-    Copy-Item $BuiltExe $TargetReleaseExe -Force
+# 3. Synchronize Core DSP Engine DLL
+$CoreDllSourceCandidates = @(
+    (Join-Path $ScriptRoot "build/$Configuration/ModularVoiceStudio_Core.dll"),
+    (Join-Path $ScriptRoot "ModularVoiceStudio_Core.dll"),
+    (Join-Path $ScriptRoot "Standalone/ModularVoiceStudio_Core.dll")
+)
+
+$SyncedCoreDll = $false
+foreach ($cand in $CoreDllSourceCandidates) {
+    if (Test-Path $cand) {
+        Copy-Item $cand (Join-Path $StandaloneDir "ModularVoiceStudio_Core.dll") -Force
+        Write-Host "[+] Synchronized Core DSP DLL from: $cand" -ForegroundColor Gray
+        $SyncedCoreDll = $true
+        break
+    }
+}
+
+if (-not $SyncedCoreDll) {
+    Write-Warning "Could not find ModularVoiceStudio_Core.dll to synchronize into dist/Standalone."
+}
+
+# 4. Verify VST3 and VST2 Artefacts
+$ArtefactsDir = Join-Path $ScriptRoot "build/ModularVoiceStudio_artefacts/$Configuration"
+$Vst3Bundle = Join-Path $ArtefactsDir "VST3/Modular Voice Studio.vst3"
+$Vst2Dll = Join-Path $ArtefactsDir "VST/Modular Voice Studio.dll"
+
+if (Test-Path $Vst3Bundle) {
+    Write-Host "[+] Found VST3 plugin bundle." -ForegroundColor Green
+} else {
+    Write-Warning "VST3 plugin bundle not found at $Vst3Bundle."
+}
+
+if (Test-Path $Vst2Dll) {
+    Write-Host "[+] Found VST2 plugin DLL." -ForegroundColor Green
+} else {
+    Write-Warning "VST2 plugin DLL not found at $Vst2Dll."
+}
+
+# 5. Compile Inno Setup Script
+$IssFile = Join-Path $ScriptRoot "Installer/ModularVoiceStudio.iss"
+Write-Host "[+] Compiling Inno Setup package ($IssFile)..." -ForegroundColor Green
+
+& "$IsccExe" "$IssFile"
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Inno Setup compilation failed."
+    exit 1
+}
+
+# 6. Verify Output
+$TargetExe = Join-Path $ScriptRoot "dist/ModularVoiceStudio_Setup.exe"
+if (Test-Path $TargetExe) {
+    $item = Get-Item $TargetExe
+    $sizeMb = [math]::Round($item.Length / 1MB, 2)
     Write-Host "============================================================" -ForegroundColor Cyan
-    Write-Host "  INSTALLER READY!" -ForegroundColor Green
-    Write-Host "  Location: $TargetReleaseExe" -ForegroundColor Yellow
+    Write-Host "  INSTALLER GENERATED SUCCESSFULLY!" -ForegroundColor Green
+    Write-Host "  Output: $TargetExe ($sizeMb MB)" -ForegroundColor Yellow
     Write-Host "============================================================" -ForegroundColor Cyan
 } else {
-    Write-Error "Installer build failed. Target executable not generated."
+    Write-Error "Target executable not found at $TargetExe."
+    exit 1
 }

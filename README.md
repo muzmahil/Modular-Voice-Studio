@@ -159,14 +159,29 @@ dotnet build Standalone/ModularVoiceStudio.App.csproj -c Release
 
 ## 📦 Building Installer Package
 
-To generate a standalone setup installer executable:
+Modular Voice Studio uses an audio-industry standard **Inno Setup 6** installer architecture, eliminating antivirus false positives and Windows SmartScreen heuristic warnings associated with custom self-extractors.
+
+### Highlights:
+* **Modern DPI-Aware Wizard**: High-resolution branding, modern layout, and clean step-by-step navigation.
+* **Component Selection**:
+  * **Standalone Application**: Full desktop GUI and audio engine.
+  * **VST3 Plugin**: 64-bit VST3 bundle for modern DAWs (FL Studio, Ableton, Reaper, Cubase, Studio One, etc.).
+  * **VST2 Plugin**: 64-bit DLL for legacy DAWs and hosts.
+* **Smart Standard Locations**:
+  * Default VST3: `C:\Program Files\Common Files\VST3` (VST3 audio standard)
+  * Default VST2: Automatically detected from Windows Registry (`HKLM\SOFTWARE\VST`), with fallback to `C:\Program Files\VSTPlugins`
+  * Default Standalone: `C:\Program Files\Modular Voice Studio`
+* **Custom Path Selection**: Dedicated destination selection pages allow choosing custom install folders for each component.
+
+To compile the installer package:
 
 ```powershell
 # Run the automated packaging script
 .\Build-Installer.ps1
 ```
 
-The output setup bundle will be generated in `dist/ModularVoiceStudio_Setup.exe`.
+The output installer will be generated at:
+`dist/ModularVoiceStudio_Setup.exe`
 
 ---
 
