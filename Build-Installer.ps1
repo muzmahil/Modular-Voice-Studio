@@ -44,16 +44,10 @@ if (-not $IsccExe) {
 
 Write-Host "[+] Using Inno Setup Compiler: $IsccExe" -ForegroundColor Gray
 
-# 2. Publish Standalone Application (Self-Contained x64)
+# 2. Standalone Application (Excluded from Plugin-only installer)
 $StandaloneDir = Join-Path $ScriptRoot "dist/Standalone"
-if (-not $SkipPublish) {
-    Write-Host "[+] Publishing Standalone Application (self-contained win-x64)..." -ForegroundColor Green
-    $StandaloneProj = Join-Path $ScriptRoot "Standalone/ModularVoiceStudio.App.csproj"
-    dotnet publish $StandaloneProj -c $Configuration -r win-x64 --self-contained true -o $StandaloneDir
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "dotnet publish failed for Standalone application."
-        exit 1
-    }
+if (-not $SkipPublish -and (Test-Path (Join-Path $ScriptRoot "Standalone/ModularVoiceStudio.App.csproj"))) {
+    Write-Host "[*] Skipping Standalone publish (Installer is configured for VST3/VST2 plugins only)." -ForegroundColor Gray
 }
 
 # 3. Synchronize Core DSP Engine DLL

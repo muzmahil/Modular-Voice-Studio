@@ -1,12 +1,11 @@
 ; ==============================================================================
-; Modular Voice Studio - Professional Inno Setup Script
+; Modular Voice Studio - Audio Plugins Installer (VST3 & VST2)
 ; ==============================================================================
 
 #define MyAppName "Modular Voice Studio"
 #define MyAppVersion "1.5.0"
 #define MyAppPublisher "Modular Voice Studio Team"
 #define MyAppURL "https://github.com/isudev/ModularAudioOS"
-#define MyAppExeName "ModularVoiceStudio.exe"
 
 [Setup]
 AppId={{5C0A7463-718D-4F3D-949B-C57E868784E2}
@@ -20,8 +19,10 @@ AppUpdatesURL={#MyAppURL}
 ; Native 64-Bit Architecture
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
-DefaultDirName={autopf}\{#MyAppName}
-DefaultGroupName={#MyAppName}
+
+; For plugin-only installer, we disable standard application dir page
+DefaultDirName={commoncf}\VST3
+DisableDirPage=yes
 DisableProgramGroupPage=yes
 
 ; Modern Styling & Layout
@@ -30,7 +31,7 @@ WizardSizePercent=120,120
 WizardImageFile=Assets\WizardImage.bmp
 WizardSmallImageFile=Assets\WizardSmallImage.bmp
 SetupIconFile=..\Standalone\Assets\icon.ico
-UninstallDisplayIcon={app}\{#MyAppExeName}
+UninstallFilesDir={commoncf}\VST3\Modular Voice Studio.vst3
 
 ; Compression
 Compression=lzma2/ultra64
@@ -50,39 +51,21 @@ AlwaysShowComponentsList=yes
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Types]
-
-Name: "full"; Description: "Full Installation (Standalone + VST3 + VST2)"
-Name: "custom"; Description: "Custom Installation (Choose individual components)"; Flags: iscustom
-Name: "standaloneonly"; Description: "Standalone Application Only"
-Name: "pluginsonly"; Description: "Audio Plugins Only (VST3 + VST2 for DAWs)"
+Name: "full"; Description: "Full Installation (VST3 + VST2)"
+Name: "custom"; Description: "Custom Installation (Choose formats)"; Flags: iscustom
+Name: "vst3only"; Description: "VST3 Plugin Only (Recommended)"
+Name: "vst2only"; Description: "VST2 Plugin Only (Legacy)"
 
 [Components]
-Name: "Standalone"; Description: "Modular Voice Studio Standalone Application (Desktop GUI & Audio Engine)"; Types: full standaloneonly
-Name: "VST3"; Description: "Modular Voice Studio VST3 Audio Effect (Recommended for modern DAWs: FL Studio, Ableton, Reaper, Cubase, etc.)"; Types: full pluginsonly
-Name: "VST2"; Description: "Modular Voice Studio VST2 Audio Effect (64-bit DLL for legacy DAW compatibility)"; Types: full pluginsonly
-
-
-
-[Tasks]
-Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Components: Standalone
+Name: "VST3"; Description: "Modular Voice Studio VST3 Audio Effect (Recommended for modern DAWs: FL Studio, Ableton, Reaper, Cubase, Studio One, etc.)"; Types: full vst3only
+Name: "VST2"; Description: "Modular Voice Studio VST2 Audio Effect (64-bit DLL for DAWs requiring legacy VST2 support)"; Types: full vst2only
 
 [Files]
-; --- Standalone Application ---
-Source: "..\dist\Standalone\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Components: Standalone
-
 ; --- VST3 Plugin Bundle ---
-; VST3 is a bundle folder structure: "Modular Voice Studio.vst3\Contents\..."
 Source: "..\build\ModularVoiceStudio_artefacts\Release\VST3\Modular Voice Studio.vst3\*"; DestDir: "{code:GetVST3Dir}\Modular Voice Studio.vst3"; Flags: ignoreversion recursesubdirs createallsubdirs; Components: VST3
 
 ; --- VST2 Plugin DLL ---
 Source: "..\build\ModularVoiceStudio_artefacts\Release\VST\Modular Voice Studio.dll"; DestDir: "{code:GetVST2Dir}"; Flags: ignoreversion; Components: VST2
-
-[Icons]
-Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"; Components: Standalone
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; Components: Standalone
-
-[Run]
-Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent; Components: Standalone
 
 [Code]
 var
@@ -119,9 +102,9 @@ end;
 // Inno Setup Wizard Initialization
 procedure InitializeWizard();
 begin
-  // Page 1: VST3 Directory Selection
+  // Page 1: VST3 Directory Selection (appears right after Components selection if VST3 is selected)
   VST3DirPage := CreateInputDirPage(
-    wpSelectDir,
+    wpSelectComponents,
     'Select VST3 Plugin Destination',
     'Where should the 64-bit VST3 plugin be installed?',
     'Setup will install the Modular Voice Studio VST3 plugin bundle into the following directory.'#13#10 +
@@ -130,7 +113,7 @@ begin
   VST3DirPage.Add('');
   VST3DirPage.Values[0] := GetDefaultVST3Dir();
 
-  // Page 2: VST2 Directory Selection
+  // Page 2: VST2 Directory Selection (appears after VST3 page if VST2 is selected)
   VST2DirPage := CreateInputDirPage(
     VST3DirPage.ID,
     'Select VST2 Plugin Destination',
@@ -146,12 +129,24 @@ end;
 function ShouldSkipPage(PageID: Integer): Boolean;
 begin
   Result := False;
-  if (PageID = wpSelectDir) and (not WizardIsComponentSelected('Standalone')) then
-    Result := True
-  else if (PageID = VST3DirPage.ID) and (not WizardIsComponentSelected('VST3')) then
+  if (PageID = VST3DirPage.ID) and (not WizardIsComponentSelected('VST3')) then
     Result := True
   else if (PageID = VST2DirPage.ID) and (not WizardIsComponentSelected('VST2')) then
     Result := True;
+end;
+
+// Ensure at least one component is selected before proceeding from wpSelectComponents
+function NextButtonClick(CurPageID: Integer): Boolean;
+begin
+  Result := True;
+  if CurPageID = wpSelectComponents then
+  begin
+    if (not WizardIsComponentSelected('VST3')) and (not WizardIsComponentSelected('VST2')) then
+    begin
+      MsgBox('Please select at least one plugin format (VST3 or VST2) to install.', mbError, MB_OK);
+      Result := False;
+    end;
+  end;
 end;
 
 // Getter functions for [Files] section destinations
