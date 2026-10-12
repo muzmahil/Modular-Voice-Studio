@@ -51,14 +51,15 @@ AlwaysShowComponentsList=yes
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Types]
-Name: "full"; Description: "Full Installation (VST3 + VST2)"
-Name: "custom"; Description: "Custom Installation (Choose formats)"; Flags: iscustom
-Name: "vst3only"; Description: "VST3 Plugin Only (Recommended)"
-Name: "vst2only"; Description: "VST2 Plugin Only (Legacy)"
+Name: "full"; Description: "Full Installation"
+Name: "custom"; Description: "Custom Installation"; Flags: iscustom
+Name: "vst3only"; Description: "VST3 Plugin Only"
+Name: "vst2only"; Description: "VST2 Plugin Only"
 
 [Components]
-Name: "VST3"; Description: "Modular Voice Studio VST3 Audio Effect (Recommended for modern DAWs: FL Studio, Ableton, Reaper, Cubase, Studio One, etc.)"; Types: full vst3only
-Name: "VST2"; Description: "Modular Voice Studio VST2 Audio Effect (64-bit DLL for DAWs requiring legacy VST2 support)"; Types: full vst2only
+Name: "VST3"; Description: "Modular Voice Studio VST3"; Types: full vst3only
+Name: "VST2"; Description: "Modular Voice Studio VST2"; Types: full vst2only
+
 
 [Files]
 ; --- VST3 Plugin Bundle ---
@@ -106,9 +107,8 @@ begin
   VST3DirPage := CreateInputDirPage(
     wpSelectComponents,
     'Select VST3 Plugin Destination',
-    'Where should the 64-bit VST3 plugin be installed?',
-    'Setup will install the Modular Voice Studio VST3 plugin bundle into the following directory.'#13#10 +
-    'The standard directory below is automatically detected and recognized by all modern DAWs.',
+    'Where should Modular Voice Studio VST3 be installed?',
+    'Setup will install Modular Voice Studio VST3 into the following directory.',
     False, '');
   VST3DirPage.Add('');
   VST3DirPage.Values[0] := GetDefaultVST3Dir();
@@ -117,12 +117,12 @@ begin
   VST2DirPage := CreateInputDirPage(
     VST3DirPage.ID,
     'Select VST2 Plugin Destination',
-    'Where should the 64-bit VST2 plugin (.dll) be installed?',
-    'Setup will install the Modular Voice Studio VST2 plugin into the following directory.'#13#10 +
-    'Choose your DAW''s 64-bit VST plugins directory (e.g., C:\Program Files\VSTPlugins).',
+    'Where should Modular Voice Studio VST2 be installed?',
+    'Setup will install Modular Voice Studio VST2 into the following directory.',
     False, '');
   VST2DirPage.Add('');
   VST2DirPage.Values[0] := GetDefaultVST2Dir();
+
 end;
 
 // Dynamically skip directory selection pages if corresponding component is not selected
