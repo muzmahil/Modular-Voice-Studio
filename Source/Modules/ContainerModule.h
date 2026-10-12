@@ -20,8 +20,25 @@ public:
     struct InnerModule
     {
         juce::String typeId;
-        bool isBypassed = false;
+        std::atomic<bool> isBypassed { false };
         std::unique_ptr<ModuleProcessor> processor;
+
+        InnerModule() = default;
+        InnerModule (const juce::String& t, bool b, std::unique_ptr<ModuleProcessor> p)
+            : typeId (t), isBypassed (b), processor (std::move (p)) {}
+
+        InnerModule (InnerModule&& other) noexcept
+            : typeId (std::move (other.typeId)),
+              isBypassed (other.isBypassed.load()),
+              processor (std::move (other.processor)) {}
+
+        InnerModule& operator= (InnerModule&& other) noexcept
+        {
+            typeId = std::move (other.typeId);
+            isBypassed.store (other.isBypassed.load());
+            processor = std::move (other.processor);
+            return *this;
+        }
     };
 
     ContainerModule()
@@ -36,12 +53,28 @@ public:
     {
         currentSampleRate = sampleRate;
         currentBlockSize = samplesPerBlock;
+
+        dryBuffer.setSize (2, samplesPerBlock);
+
+        // Preallocate 1 second of delay line for dry phase alignment
+        int maxDelay = juce::jmax (samplesPerBlock * 4, (int) (sampleRate * 1.0));
+        dryDelayLine.setSize (2, maxDelay);
+        dryDelayLine.clear();
+        dryDelayWritePos = 0;
+
         const juce::ScopedLock sl (processLock);
+        int totalLatency = 0;
         for (auto& mod : innerModules)
         {
             if (mod.processor != nullptr)
+            {
+                mod.processor->setRateAndBufferSizeDetails (sampleRate, samplesPerBlock);
                 mod.processor->prepareToPlay (sampleRate, samplesPerBlock);
+                if (! mod.isBypassed.load (std::memory_order_relaxed))
+                    totalLatency += mod.processor->getLatencySamples();
+            }
         }
+        setLatencySamples (totalLatency);
     }
 
     void releaseResources() override
@@ -56,43 +89,72 @@ public:
 
     void processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi) override
     {
+        juce::ScopedNoDenormals noDenormals;
         const int numChannels = buffer.getNumChannels();
-        const int numSamples = buffer.getNumSamples();
+        const int numSamples  = buffer.getNumSamples();
         if (numChannels == 0 || numSamples == 0) return;
 
-        float mix = mixParam != nullptr ? mixParam->load() : 1.0f;
-
-        if (mix <= 0.001f)
-            return; // 100% dry passthrough
+        const float mix = mixParam != nullptr ? mixParam->load (std::memory_order_relaxed) : 1.0f;
 
         const juce::ScopedLock sl (processLock);
 
         if (innerModules.empty())
             return;
 
-        // If mix < 100%, preserve dry copy
-        juce::AudioBuffer<float> dryCopy;
+        // Calculate and dynamically track total inner latency
+        int totalLatency = 0;
+        for (const auto& mod : innerModules)
+        {
+            if (mod.processor != nullptr && ! mod.isBypassed.load (std::memory_order_relaxed))
+                totalLatency += mod.processor->getLatencySamples();
+        }
+        if (totalLatency != getLatencySamples())
+            setLatencySamples (totalLatency);
+
+        const int activeChannels = juce::jmin (numChannels, 2);
+
+        // Zero-allocation dry copy delayed by totalLatency (prevents comb filtering / flanging!)
         if (mix < 0.999f)
-            dryCopy.makeCopyOf (buffer, true);
+        {
+            dryBuffer.setSize (activeChannels, numSamples, false, false, true);
+            const int delayCapacity = dryDelayLine.getNumSamples();
+
+            for (int ch = 0; ch < activeChannels; ++ch)
+            {
+                const float* inData = buffer.getReadPointer (ch);
+                float* delayData = dryDelayLine.getWritePointer (ch);
+                float* dryOut = dryBuffer.getWritePointer (ch);
+
+                for (int i = 0; i < numSamples; ++i)
+                {
+                    int wPos = (dryDelayWritePos + i) % delayCapacity;
+                    delayData[wPos] = inData[i];
+
+                    int rPos = (wPos - totalLatency + delayCapacity) % delayCapacity;
+                    dryOut[i] = delayData[rPos];
+                }
+            }
+            dryDelayWritePos = (dryDelayWritePos + numSamples) % delayCapacity;
+        }
 
         // Process sequentially through each active inner module
         for (auto& mod : innerModules)
         {
-            if (mod.processor != nullptr && ! mod.isBypassed)
+            if (mod.processor != nullptr && ! mod.isBypassed.load (std::memory_order_relaxed))
             {
                 mod.processor->processBlock (buffer, midi);
             }
         }
 
-        // Apply Wet/Dry blend
+        // Apply Phase-Coherent Wet/Dry blend
         if (mix < 0.999f)
         {
-            float wet = mix;
-            float dry = 1.0f - mix;
-            for (int ch = 0; ch < numChannels; ++ch)
+            const float wet = mix;
+            const float dry = 1.0f - mix;
+            for (int ch = 0; ch < activeChannels; ++ch)
             {
                 buffer.applyGain (ch, 0, numSamples, wet);
-                buffer.addFrom (ch, 0, dryCopy, ch, 0, numSamples, dry);
+                buffer.addFrom (ch, 0, dryBuffer, ch, 0, numSamples, dry);
             }
         }
     }
@@ -103,10 +165,13 @@ public:
         if (newProc != nullptr)
         {
             if (currentSampleRate > 0.0)
+            {
+                newProc->setRateAndBufferSizeDetails (currentSampleRate, currentBlockSize);
                 newProc->prepareToPlay (currentSampleRate, currentBlockSize);
+            }
 
             const juce::ScopedLock sl (processLock);
-            innerModules.push_back ({ typeId, false, std::move (newProc) });
+            innerModules.emplace_back (typeId, false, std::move (newProc));
         }
     }
 
@@ -115,18 +180,28 @@ public:
         if (proc != nullptr)
         {
             if (currentSampleRate > 0.0)
+            {
+                proc->setRateAndBufferSizeDetails (currentSampleRate, currentBlockSize);
                 proc->prepareToPlay (currentSampleRate, currentBlockSize);
+            }
 
             const juce::ScopedLock sl (processLock);
-            innerModules.push_back ({ typeId, bypassed, std::move (proc) });
+            innerModules.emplace_back (typeId, bypassed, std::move (proc));
         }
     }
 
     void removeInnerModule (int index)
     {
-        const juce::ScopedLock sl (processLock);
-        if (index >= 0 && index < (int) innerModules.size())
-            innerModules.erase (innerModules.begin() + index);
+        std::unique_ptr<ModuleProcessor> toDelete;
+        {
+            const juce::ScopedLock sl (processLock);
+            if (index >= 0 && index < (int) innerModules.size())
+            {
+                toDelete = std::move (innerModules[(size_t) index].processor);
+                innerModules.erase (innerModules.begin() + index);
+            }
+        }
+        // toDelete is safely freed here outside the processLock!
     }
 
     void moveInnerModuleUp (int index)
@@ -193,8 +268,8 @@ public:
             {
                 auto* modXml = innerXml->createNewChildElement ("MODULE");
                 modXml->setAttribute ("typeId", mod.typeId);
-                modXml->setAttribute ("bypassed", mod.isBypassed);
-                
+                modXml->setAttribute ("bypassed", mod.isBypassed.load (std::memory_order_relaxed));
+
                 juce::MemoryBlock modState;
                 mod.processor->getStateInformation (modState);
                 if (modState.getSize() > 0)
@@ -210,15 +285,20 @@ public:
         if (auto xml = getXmlFromBinary (data, sizeInBytes))
         {
             customLabel = xml->getStringAttribute ("customLabel", "Container");
-            
-            auto paramsTree = xml->getChildByName (apvts.state.getType());
-            if (paramsTree != nullptr)
-                apvts.replaceState (juce::ValueTree::fromXml (*paramsTree));
+
+            // Robust APVTS restore: checks both root and child element
+            auto* paramsXml = xml->hasTagName (apvts.state.getType()) ? xml.get()
+                                                                     : xml->getChildByName (apvts.state.getType());
+            if (paramsXml != nullptr)
+            {
+                auto vt = juce::ValueTree::fromXml (*paramsXml);
+                vt.removeChild (vt.getChildWithName ("INNER_MODULES"), nullptr);
+                apvts.replaceState (vt);
+            }
 
             if (auto* innerXml = xml->getChildByName ("INNER_MODULES"))
             {
-                const juce::ScopedLock sl (processLock);
-                innerModules.clear();
+                std::vector<InnerModule> newModules;
 
                 for (auto* modXml : innerXml->getChildIterator())
                 {
@@ -232,7 +312,10 @@ public:
                         if (proc != nullptr)
                         {
                             if (currentSampleRate > 0.0)
+                            {
+                                proc->setRateAndBufferSizeDetails (currentSampleRate, currentBlockSize);
                                 proc->prepareToPlay (currentSampleRate, currentBlockSize);
+                            }
 
                             if (stateB64.isNotEmpty())
                             {
@@ -241,9 +324,17 @@ public:
                                     proc->setStateInformation (modState.getData(), (int) modState.getSize());
                             }
 
-                            innerModules.push_back ({ typeId, bypassed, std::move (proc) });
+                            newModules.emplace_back (typeId, bypassed, std::move (proc));
                         }
                     }
+                }
+
+                // Swap under lock; old modules destructed safely outside lock!
+                std::vector<InnerModule> oldModules;
+                {
+                    const juce::ScopedLock sl (processLock);
+                    std::swap (innerModules, newModules);
+                    oldModules = std::move (newModules);
                 }
             }
         }
@@ -268,7 +359,11 @@ private:
     double currentSampleRate = 48000.0;
     int currentBlockSize = 256;
 
-    juce::CriticalSection processLock;
+    juce::AudioBuffer<float> dryBuffer;
+    juce::AudioBuffer<float> dryDelayLine;
+    int dryDelayWritePos = 0;
+
+    mutable juce::CriticalSection processLock;
     std::vector<InnerModule> innerModules;
 };
 
@@ -281,6 +376,7 @@ public:
 
     void closeButtonPressed() override
     {
+        setVisible (false);
         delete this;
     }
 };
@@ -346,7 +442,7 @@ public:
             auto* mod = container.getInnerModule (i);
             if (mod == nullptr) continue;
 
-            auto* bgComp = new InnerModuleRowComponent (*this, container, i, mod->typeId, mod->isBypassed, mod->processor.get());
+            auto* bgComp = new InnerModuleRowComponent (*this, container, i, mod->typeId, mod->isBypassed.load(), mod->processor.get());
             bgComp->setBounds (0, y, w, rowH);
             rackContainer.addAndMakeVisible (bgComp);
             rackRows.add (bgComp);
@@ -408,8 +504,9 @@ private:
             {
                 if (auto* m = container.getInnerModule (index))
                 {
-                    m->isBypassed = ! m->isBypassed;
-                    isBypassed = m->isBypassed;
+                    bool newState = ! m->isBypassed.load();
+                    m->isBypassed.store (newState);
+                    isBypassed = newState;
                     bypassBtn.setButtonText (isBypassed ? "BYP" : "ON");
                     bypassBtn.setColour (juce::TextButton::buttonColourId, isBypassed ? juce::Colour (0xff333339) : UITheme::appleBlue);
                     repaint();
@@ -423,6 +520,12 @@ private:
             {
                 if (processor != nullptr)
                 {
+                    if (activeWindow != nullptr)
+                    {
+                        activeWindow->toFront (true);
+                        return;
+                    }
+
                     auto* win = new InnerModuleWindow (
                         moduleType + " (" + container.getCustomLabel() + ")",
                         juce::Colour (0xff1a1a20),
@@ -432,6 +535,7 @@ private:
                     win->setResizable (false, false);
                     win->centreWithSize (win->getWidth(), win->getHeight());
                     win->setVisible (true);
+                    activeWindow = win;
                 }
             };
             addAndMakeVisible (editBtn);
@@ -470,6 +574,12 @@ private:
             addAndMakeVisible (deleteBtn);
         }
 
+        ~InnerModuleRowComponent() override
+        {
+            if (activeWindow != nullptr)
+                delete activeWindow.getComponent();
+        }
+
         bool isInterestedInDragSource (const SourceDetails& dragSourceDetails) override
         {
             return dragSourceDetails.description.toString().startsWith ("rack_idx:");
@@ -494,10 +604,15 @@ private:
             if (desc.startsWith ("rack_idx:"))
             {
                 int srcIdx = desc.substring (9).getIntValue();
-                if (srcIdx != index)
+                int targetIdx = index;
+                if (srcIdx != targetIdx)
                 {
-                    container.moveInnerModuleTo (srcIdx, index);
-                    editor.rebuildRackList();
+                    juce::Component::SafePointer<ContainerModuleEditor> safeEditor (&editor);
+                    juce::MessageManager::callAsync ([&cont = this->container, safeEditor, srcIdx, targetIdx] {
+                        cont.moveInnerModuleTo (srcIdx, targetIdx);
+                        if (safeEditor != nullptr)
+                            safeEditor->rebuildRackList();
+                    });
                 }
             }
         }
@@ -568,6 +683,8 @@ private:
         bool isBypassed;
         ModuleProcessor* processor;
         bool isDragOver = false;
+
+        juce::Component::SafePointer<InnerModuleWindow> activeWindow;
 
         juce::TextButton bypassBtn;
         juce::TextButton editBtn;

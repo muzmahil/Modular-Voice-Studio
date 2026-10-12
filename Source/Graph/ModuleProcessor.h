@@ -161,11 +161,16 @@ public:
 
         inline float get (float fallbackVal = 0.0f) const noexcept
         {
-            if (ranged != nullptr)
-                return ranged->getNormalisableRange().convertFrom0to1 (ranged->getValue());
             if (raw != nullptr)
                 return raw->load (std::memory_order_relaxed);
+            if (ranged != nullptr)
+                return ranged->getNormalisableRange().convertFrom0to1 (ranged->getValue());
             return fallbackVal != 0.0f ? fallbackVal : defaultValue;
+        }
+
+        inline int getAsInt (int fallbackVal = 0) const noexcept
+        {
+            return juce::roundToInt (get ((float) fallbackVal));
         }
 
         inline void set (float userVal) noexcept
@@ -174,7 +179,6 @@ public:
             {
                 auto range = ranged->getNormalisableRange();
                 float norm = range.convertTo0to1 (juce::jlimit (range.start, range.end, userVal));
-                ranged->setValue (norm);
                 ranged->setValueNotifyingHost (norm);
             }
             if (raw != nullptr)
@@ -190,6 +194,14 @@ public:
         p.ranged = getRangedParam (paramId);
         p.raw = getRawParam (paramId);
         p.defaultValue = defVal;
+
+        if (p.ranged == nullptr && p.raw == nullptr)
+        {
+            DBG ("*** CRITICAL: ModuleProcessor::getModuleParam unbound '" << paramId 
+                 << "' in module '" << name << "'! ***");
+            jassertfalse;
+        }
+
         return p;
     }
 
