@@ -590,17 +590,17 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
     }
 
     // Process Modular Voice Studio -> Dynamic Effect Chain (Strip 0 -> Strip 1 -> ... -> Strip N)
-    effectChain.processChain (chBuffers[0], midi);
+    effectChain.processChain (chBuffers[activeChannelIndex], midi);
 
     // 5. Route & Sum to Output Buses
     // Main hardware buffer (Cleared in standalone, used only in DAW plugins)
     buffer.clear();
 
-    if (wrapperType == wrapperType_VST3 || wrapperType == wrapperType_AudioUnit || wrapperType == wrapperType_AAX)
+    if (wrapperType != wrapperType_Standalone)
     {
         int activeIdx = activeChannelIndex;
         buffer.copyFrom (0, 0, chBuffers[activeIdx], 0, 0, numSamples);
-        if (buffer.getNumChannels() > 1)
+        if (buffer.getNumChannels() > 1 && chBuffers[activeIdx].getNumChannels() > 1)
             buffer.copyFrom (1, 0, chBuffers[activeIdx], 1, 0, numSamples);
     }
     else
@@ -613,6 +613,7 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
                 buffer.copyFrom (1, 0, chBuffers[0], 1, 0, numSamples);
         }
     }
+
 
     // Bus B1 (VB-CABLE Virtual Mic Output)
     juce::AudioBuffer<float> busB1 (2, numSamples);
