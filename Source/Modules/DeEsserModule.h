@@ -37,6 +37,33 @@ public:
 
     ~DeEsserModule() override = default;
 
+    struct Biquad
+    {
+        float b0 = 1.0f, b1 = 0.0f, b2 = 0.0f;
+        float a1 = 0.0f, a2 = 0.0f;
+        float z1 = 0.0f, z2 = 0.0f;
+
+        inline float process (float x) noexcept
+        {
+            const float y = b0 * x + z1;
+            z1 = b1 * x - a1 * y + z2;
+            z2 = b2 * x - a2 * y;
+            return y;
+        }
+
+        void setCoeffs (float inB0, float inB1, float inB2, float inA1, float inA2) noexcept
+        {
+            b0 = inB0; b1 = inB1; b2 = inB2;
+            a1 = inA1; a2 = inA2;
+        }
+
+        void reset() noexcept
+        {
+            z1 = 0.0f;
+            z2 = 0.0f;
+        }
+    };
+
     void prepareToPlay (double sr, int) override
     {
         sampleRate = sr > 0.0 ? sr : 44100.0;
@@ -52,141 +79,145 @@ public:
         if (numChannels == 0 || numSamples == 0) return;
 
         // Parameters
-        float procAmount   = juce::jlimit (0.0f, 100.0f, processingParam.get (55.0f)); // 0 to 100%
-        int rangeIdx       = juce::jlimit (0, 3, (int) freqRangeParam.get (2.0f));
-        float intensity    = juce::jlimit (1.0f, 10.0f, intensityParam.get (5.5f));  // Ratio
-        float sharpness    = juce::jlimit (4.0f, 24.0f, sharpnessParam.get (14.0f));  // Filter Q / slope
-        float makeupGain   = juce::Decibels::decibelsToGain (makeupParam.get (0.0f));
-        bool diffAudition  = diffParam.get (0.0f) > 0.5f;
-        bool filterAudition= filterParam.get (0.0f) > 0.5f;
+        const float procAmount    = juce::jlimit (0.0f, 100.0f, processingParam.get (55.0f));
+        const int rangeIdx        = juce::jlimit (0, 3, (int) freqRangeParam.get (2.0f));
+        const float intensity     = juce::jlimit (1.0f, 10.0f, intensityParam.get (5.5f));  // Ratio
+        const float sharpness     = juce::jlimit (4.0f, 24.0f, sharpnessParam.get (14.0f));
+        const float makeupGain    = juce::Decibels::decibelsToGain (makeupParam.get (0.0f));
+        const bool diffAudition   = diffParam.get (0.0f) > 0.5f;
+        const bool filterAudition = filterParam.get (0.0f) > 0.5f;
 
-        // Determine Center Frequency & Q from Range & Sharpness
+        // Determine Center Frequency & Q
         float centerFreq = 8200.0f;
         switch (rangeIdx)
         {
-            case 0: centerFreq = 3800.0f;  break; // Low-Hi (2.5k - 5.5k)
-            case 1: centerFreq = 5800.0f;  break; // Mid-Hi (4.5k - 8k)
-            case 2: centerFreq = 8200.0f;  break; // High   (6.5k - 11k)
-            case 3: centerFreq = 11500.0f; break; // Hi-End (8.5k - 16k)
+            case 0: centerFreq = 3800.0f;  break; // Low-Hi
+            case 1: centerFreq = 5800.0f;  break; // Mid-Hi
+            case 2: centerFreq = 8200.0f;  break; // High
+            case 3: centerFreq = 11500.0f; break; // Hi-End
         }
 
-        // Q from sharpness (4dB ~ 0.9 broad, 24dB ~ 3.2 surgical)
-        float filterQ = juce::jmap (sharpness, 4.0f, 24.0f, 0.9f, 3.2f);
+        // Q from sharpness (4dB ~ 0.7 broad natural, 24dB ~ 2.5 surgical)
+        const float filterQ = juce::jmap (sharpness, 4.0f, 24.0f, 0.7f, 2.5f);
         updateBandpassCoeffs (centerFreq, filterQ);
         updateReferenceLowpassCoeffs (1800.0f);
 
-        // Dynamic detection threshold: mapped smoothly from Processing amount (100% = high sensitivity -48dB, 0% = off)
-        float threshDb = juce::jmap (procAmount, 0.0f, 100.0f, 0.0f, -48.0f);
-        float threshLin = juce::Decibels::decibelsToGain (threshDb, -90.0f);
+        // Ballistics constants
+        const float sr    = (float) sampleRate;
+        const float attC  = std::exp (-1.0f / (0.0005f * sr));  // Detector attack: 0.5 ms
+        const float relC  = std::exp (-1.0f / (0.0080f * sr));  // Detector release: 8.0 ms
+        const float grAtt = std::exp (-1.0f / (0.0010f * sr));  // Gain Reduction attack: 1.0 ms
+        const float grRel = std::exp (-1.0f / (0.0450f * sr));  // Gain Reduction release: 45.0 ms
 
-        // Dynamic Ballistics (Fast 0.8ms attack to catch harsh consonants, 40ms smooth natural release)
-        float attCoeff = std::exp (-1.0f / (float) (0.0008f * sampleRate));
-        float relCoeff = std::exp (-1.0f / (float) (0.0400f * sampleRate));
+        const float slope = 1.0f - (1.0f / intensity);
+        const float maxRedDb = 24.0f;
+        const int nCh = juce::jmin (numChannels, 2);
+
+        // Threshold in dB: mapped smoothly from Processing amount (0% -> 0 dB, 100% -> -54 dB)
+        const float threshDb = juce::jmap (procAmount, 0.0f, 100.0f, 0.0f, -54.0f);
+
+        auto follow = [&] (float& env, float in) {
+            const float c = in > env ? attC : relC;
+            env = c * env + (1.0f - c) * in;
+            if (env < 1e-9f) env = 0.0f;
+        };
 
         float maxEssRedDb = 0.0f;
         float peakInLevel = 0.0f;
         float peakOutLevel = 0.0f;
         float tempBands[numBands] = {};
 
-        for (int ch = 0; ch < numChannels; ++ch)
+        for (int i = 0; i < numSamples; ++i)
         {
-            auto* channelData = buffer.getWritePointer (ch);
-            int fIdx = ch < 2 ? ch : 0;
+            float x[2]   = {};
+            float sib[2] = {};
+            float sibPk  = 0.0f;
+            float refPk  = 0.0f;
 
-            for (int i = 0; i < numSamples; ++i)
+            for (int c = 0; c < nCh; ++c)
             {
-                float in = channelData[i];
-                float absIn = std::abs (in);
-                peakInLevel = juce::jmax (peakInLevel, absIn);
+                x[c]   = buffer.getReadPointer (c)[i];
+                sib[c] = bp[c].process (x[c]);
+                float refVal = lp[c].process (x[c]);
 
-                // 1. Sibilant Bandpass Detection Signal
-                float sibSignal = bpB0 * in + bpB1 * bpX1[fIdx] + bpB2 * bpX2[fIdx]
-                                 - bpA1 * bpY1[fIdx] - bpA2 * bpY2[fIdx];
-                bpX2[fIdx] = bpX1[fIdx]; bpX1[fIdx] = in;
-                bpY2[fIdx] = bpY1[fIdx]; bpY1[fIdx] = sibSignal;
+                sibPk = juce::jmax (sibPk, std::abs (sib[c]));
+                refPk = juce::jmax (refPk, std::abs (refVal));
+                peakInLevel = juce::jmax (peakInLevel, std::abs (x[c]));
+            }
 
-                // 2. Low-Mid Vocal Body Reference Signal (for Spectral Ratio Voice discrimination)
-                float refSignal = lpB0 * in + lpB1 * lpX1[fIdx] + lpB2 * lpX2[fIdx]
-                                 - lpA1 * lpY1[fIdx] - lpA2 * lpY2[fIdx];
-                lpX2[fIdx] = lpX1[fIdx]; lpX1[fIdx] = in;
-                lpY2[fIdx] = lpY1[fIdx]; lpY1[fIdx] = refSignal;
+            // Stereo-linked envelope followers (prevents stereo image shift)
+            follow (sibEnv, sibPk);
+            follow (refEnv, refPk);
 
-                float absSib = std::abs (sibSignal);
-                float absRef = std::abs (refSignal);
+            const float sibDb = juce::Decibels::gainToDecibels (sibEnv, -100.0f);
+            const float refDb = juce::Decibels::gainToDecibels (refEnv, -100.0f);
 
-                // Update detection envelope
-                if (absSib > sideEnv[fIdx])
-                    sideEnv[fIdx] = attCoeff * sideEnv[fIdx] + (1.0f - attCoeff) * absSib;
-                else
-                    sideEnv[fIdx] = relCoeff * sideEnv[fIdx] + (1.0f - relCoeff) * absSib;
+            // Spectral Sibilance Weight: smooth transition in -12 dB .. 0 dB range
+            // (Only active when high-frequency energy is dominant compared to low-mid body)
+            const float weight = juce::jlimit (0.0f, 1.0f, (sibDb - refDb + 12.0f) / 12.0f);
 
-                // Spectral Sibilance Weight: suppress de-essing if low-mid fundamental vowel energy dominates
-                float sibilanceWeight = absSib / (absSib + absRef * 0.7f + 0.0001f);
-                sibilanceWeight = juce::jlimit (0.0f, 1.0f, (sibilanceWeight - 0.25f) * 1.6f);
+            // Over-threshold excess in dB
+            float target = 0.0f;
+            if (procAmount > 0.5f && sibDb > threshDb)
+            {
+                const float over = juce::jmax (0.0f, sibDb - threshDb);
+                target = juce::jmin (maxRedDb, over * slope * weight);
+            }
 
-                // Calculate required dynamic cut in dB
-                float currentRedDb = 0.0f;
-                if (procAmount > 0.5f && sideEnv[fIdx] > threshLin)
+            // Smooth gain reduction in dB domain
+            const float c = target > grDb ? grAtt : grRel;
+            grDb = c * grDb + (1.0f - c) * target;
+            if (grDb < 1e-4f) grDb = 0.0f;
+
+            maxEssRedDb = juce::jmax (maxEssRedDb, grDb);
+
+            // Convert reduction dB to linear reduction gain
+            const float g = juce::Decibels::decibelsToGain (-grDb);
+
+            for (int c = 0; c < nCh; ++c)
+            {
+                // Parallel Bandpass Subtractive Reduction:
+                // out = x[c] + (g - 1.0) * sib[c]
+                // When g == 1 (no reduction), out == x[c] with bit-perfect transparent phase.
+                const float cleanOut = x[c] + (g - 1.0f) * sib[c];
+
+                float y = filterAudition ? sib[c]
+                        : diffAudition   ? (x[c] - cleanOut) * 2.0f
+                        :                  cleanOut;
+
+                y *= makeupGain;
+                buffer.getWritePointer (c)[i] = y;
+                peakOutLevel = juce::jmax (peakOutLevel, std::abs (y));
+            }
+
+            // Spectrum Visualization on channel 0
+            if (i % 2 == 0)
+            {
+                float absIn0 = std::abs (x[0]);
+                for (int b = 0; b < numBands; ++b)
                 {
-                    float excessDb = juce::Decibels::gainToDecibels (sideEnv[fIdx] / threshLin);
-                    float compSlope = 1.0f - (1.0f / intensity);
-                    float desiredRed = excessDb * compSlope * sibilanceWeight;
-                    currentRedDb = juce::jlimit (0.0f, 32.0f, desiredRed);
-                }
-
-                maxEssRedDb = juce::jmax (maxEssRedDb, currentRedDb);
-
-                // 3. Dynamic Precision Peaking EQ Filter (Zero Phase Distortion)
-                // When currentRedDb == 0, filter is pure wire (gain = 0 dB)
-                float cutGainDb = -currentRedDb;
-                float dynB0, dynB1, dynB2, dynA1, dynA2;
-                computePeakingEQCoeffs (centerFreq, filterQ, cutGainDb, dynB0, dynB1, dynB2, dynA1, dynA2);
-
-                float out = dynB0 * in + dynB1 * eqX1[fIdx] + dynB2 * eqX2[fIdx]
-                            - dynA1 * eqY1[fIdx] - dynA2 * eqY2[fIdx];
-                eqX2[fIdx] = eqX1[fIdx]; eqX1[fIdx] = in;
-                eqY2[fIdx] = eqY1[fIdx]; eqY1[fIdx] = out;
-
-                // Apply Make-up Gain
-                float processedOut = out * makeupGain;
-
-                // Audition modes
-                if (filterAudition)
-                {
-                    channelData[i] = sibSignal * makeupGain;
-                }
-                else if (diffAudition)
-                {
-                    // Delta / Difference: listen to ONLY the removed harshness
-                    channelData[i] = (in - out) * makeupGain * 2.5f;
-                }
-                else
-                {
-                    channelData[i] = processedOut;
-                }
-
-                peakOutLevel = juce::jmax (peakOutLevel, std::abs (channelData[i]));
-
-                // Spectrum Visualization
-                if (ch == 0 && (i % 2 == 0))
-                {
-                    for (int b = 0; b < numBands; ++b)
-                    {
-                        float f = 2000.0f * std::pow (16000.0f / 2000.0f, (float) b / (float) (numBands - 1));
-                        float dist = std::abs (f - centerFreq);
-                        float w = 1.0f / (1.0f + dist * 0.0025f);
-                        tempBands[b] = juce::jmax (tempBands[b], absIn * w);
-                    }
+                    float f = 2000.0f * std::pow (16000.0f / 2000.0f, (float) b / (float) (numBands - 1));
+                    float dist = std::abs (f - centerFreq);
+                    float w = 1.0f / (1.0f + dist * 0.0025f);
+                    tempBands[b] = juce::jmax (tempBands[b], absIn0 * w);
                 }
             }
+        }
+
+        // If there are more than 2 channels, pass through untouched (or apply makeup)
+        for (int c = nCh; c < numChannels; ++c)
+        {
+            auto* writePtr = buffer.getWritePointer (c);
+            for (int i = 0; i < numSamples; ++i)
+                writePtr[i] *= makeupGain;
         }
 
         // Smooth visual meters
         for (int b = 0; b < numBands; ++b)
         {
             float prev = liveSpectrum[b].load (std::memory_order_relaxed);
-            float target = tempBands[b];
-            float smoothed = target > prev ? (prev * 0.35f + target * 0.65f) : (prev * 0.85f);
+            float trg  = tempBands[b];
+            float smoothed = trg > prev ? (prev * 0.35f + trg * 0.65f) : (prev * 0.85f);
             liveSpectrum[b].store (smoothed, std::memory_order_relaxed);
         }
 
@@ -254,11 +285,12 @@ private:
     {
         for (int ch = 0; ch < 2; ++ch)
         {
-            bpX1[ch] = bpX2[ch] = bpY1[ch] = bpY2[ch] = 0.0f;
-            lpX1[ch] = lpX2[ch] = lpY1[ch] = lpY2[ch] = 0.0f;
-            eqX1[ch] = eqX2[ch] = eqY1[ch] = eqY2[ch] = 0.0f;
-            sideEnv[ch] = 0.0f;
+            bp[ch].reset();
+            lp[ch].reset();
         }
+        sibEnv = 0.0f;
+        refEnv = 0.0f;
+        grDb   = 0.0f;
     }
 
     void updateBandpassCoeffs (float freq, float q)
@@ -267,11 +299,14 @@ private:
         float alpha = std::sin (w0) / (2.0f * q);
         float a0 = 1.0f + alpha;
 
-        bpB0 = alpha / a0;
-        bpB1 = 0.0f;
-        bpB2 = -alpha / a0;
-        bpA1 = (-2.0f * std::cos (w0)) / a0;
-        bpA2 = (1.0f - alpha) / a0;
+        float b0 = alpha / a0;
+        float b1 = 0.0f;
+        float b2 = -alpha / a0;
+        float a1 = (-2.0f * std::cos (w0)) / a0;
+        float a2 = (1.0f - alpha) / a0;
+
+        for (int ch = 0; ch < 2; ++ch)
+            bp[ch].setCoeffs (b0, b1, b2, a1, a2);
     }
 
     void updateReferenceLowpassCoeffs (float freq)
@@ -280,34 +315,14 @@ private:
         float alpha = std::sin (w0) / (2.0f * 0.7071f);
         float a0 = 1.0f + alpha;
 
-        lpB0 = ((1.0f - std::cos (w0)) * 0.5f) / a0;
-        lpB1 = (1.0f - std::cos (w0)) / a0;
-        lpB2 = ((1.0f - std::cos (w0)) * 0.5f) / a0;
-        lpA1 = (-2.0f * std::cos (w0)) / a0;
-        lpA2 = (1.0f - alpha) / a0;
-    }
+        float b0 = ((1.0f - std::cos (w0)) * 0.5f) / a0;
+        float b1 = (1.0f - std::cos (w0)) / a0;
+        float b2 = ((1.0f - std::cos (w0)) * 0.5f) / a0;
+        float a1 = (-2.0f * std::cos (w0)) / a0;
+        float a2 = (1.0f - alpha) / a0;
 
-    inline void computePeakingEQCoeffs (float freq, float q, float gainDb,
-                                        float& b0, float& b1, float& b2, float& a1, float& a2)
-    {
-        if (std::abs (gainDb) < 0.05f)
-        {
-            b0 = 1.0f; b1 = 0.0f; b2 = 0.0f;
-            a1 = 0.0f; a2 = 0.0f;
-            return;
-        }
-
-        float A = std::pow (10.0f, gainDb / 40.0f);
-        float w0 = 2.0f * juce::MathConstants<float>::pi * (freq / (float) sampleRate);
-        float alpha = std::sin (w0) / (2.0f * q);
-        float cosw = std::cos (w0);
-
-        float a0 = 1.0f + alpha / A;
-        b0 = (1.0f + alpha * A) / a0;
-        b1 = (-2.0f * cosw) / a0;
-        b2 = (1.0f - alpha * A) / a0;
-        a1 = (-2.0f * cosw) / a0;
-        a2 = (1.0f - alpha / A) / a0;
+        for (int ch = 0; ch < 2; ++ch)
+            lp[ch].setCoeffs (b0, b1, b2, a1, a2);
     }
 
     ParamRef processingParam;
@@ -320,13 +335,11 @@ private:
 
     double sampleRate = 44100.0;
 
-    float bpB0 = 0, bpB1 = 0, bpB2 = 0, bpA1 = 0, bpA2 = 0;
-    float lpB0 = 0, lpB1 = 0, lpB2 = 0, lpA1 = 0, lpA2 = 0;
-
-    float bpX1[2] = {}, bpX2[2] = {}, bpY1[2] = {}, bpY2[2] = {};
-    float lpX1[2] = {}, lpX2[2] = {}, lpY1[2] = {}, lpY2[2] = {};
-    float eqX1[2] = {}, eqX2[2] = {}, eqY1[2] = {}, eqY2[2] = {};
-    float sideEnv[2] = {};
+    Biquad bp[2];
+    Biquad lp[2];
+    float sibEnv = 0.0f;
+    float refEnv = 0.0f;
+    float grDb   = 0.0f;
 
     std::atomic<float> liveEssReduction { 0.0f };
     std::atomic<float> liveInPeak { 0.0f };
