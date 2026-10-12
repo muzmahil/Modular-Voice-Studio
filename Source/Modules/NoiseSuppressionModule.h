@@ -10,7 +10,7 @@ class NoiseSuppressionModuleEditor;
 class NoiseSuppressionModule : public ModuleProcessor
 {
 public:
-    static constexpr int frameSize = 480; // 10ms @ 48kHz
+    static constexpr int frameSize = 480; // 10ms @ 48kHz (RNNoise native frame size)
     static constexpr int ringCapacity = frameSize * 8;
     static constexpr int historySize = 160;
 
@@ -25,7 +25,7 @@ public:
         : ModuleProcessor ("Noise Suppression", createLayout())
     {
         amountParam = getModuleParam ("amount", 100.0f);
-        vadParam    = getModuleParam ("vadSensitivity", 30.0f);
+        vadParam    = getModuleParam ("vadSensitivity", 0.0f); // Default 0% (pure neural suppression, no artificial gating)
 
         denoiseStates[0] = rnnoise_create (nullptr);
         denoiseStates[1] = rnnoise_create (nullptr);
@@ -34,10 +34,16 @@ public:
         {
             inRing[ch].assign (ringCapacity, 0.0f);
             outRing[ch].assign (ringCapacity, 0.0f);
+            resamp48kIn[ch].assign (ringCapacity, 0.0f);
+            resamp48kOut[ch].assign (ringCapacity, 0.0f);
         }
 
         for (int i = 0; i < historySize; ++i)
-            history[i] = { 0.0f, 0.0f, 0.0f };
+        {
+            history[i].dryLevel.store (0.0f, std::memory_order_relaxed);
+            history[i].cleanLevel.store (0.0f, std::memory_order_relaxed);
+            history[i].vadProb.store (0.0f, std::memory_order_relaxed);
+        }
     }
 
     ~NoiseSuppressionModule() override
@@ -49,11 +55,20 @@ public:
     void prepareToPlay (double sr, int) override
     {
         sampleRate = sr > 0.0 ? sr : 48000.0;
+        isNative48k = std::abs (sampleRate - 48000.0) < 1.0;
 
         for (int ch = 0; ch < 2; ++ch)
         {
+            if (denoiseStates[ch] != nullptr)
+                rnnoise_init (denoiseStates[ch], nullptr);
+
             std::fill (inRing[ch].begin(), inRing[ch].end(), 0.0f);
             std::fill (outRing[ch].begin(), outRing[ch].end(), 0.0f);
+            std::fill (resamp48kIn[ch].begin(), resamp48kIn[ch].end(), 0.0f);
+            std::fill (resamp48kOut[ch].begin(), resamp48kOut[ch].end(), 0.0f);
+
+            resamplerIn[ch].reset();
+            resamplerOut[ch].reset();
         }
 
         inWritePos = 0;
@@ -64,6 +79,14 @@ public:
         currentVadGain = 1.0f;
         targetVadGain = 1.0f;
         samplesSincePush = 0;
+        historyWriteIndex.store (0, std::memory_order_relaxed);
+
+        smoothedAmount.reset (sampleRate, 0.020); // 20ms click-free ramp
+        smoothedAmount.setCurrentAndTargetValue (juce::jlimit (0.0f, 1.0f, amountParam.get (100.0f) * 0.01f));
+
+        // Report exact 10ms frame latency to DAW/Host for PDC (Plugin Delay Compensation)
+        const int latency = isNative48k ? frameSize : (int) std::round (frameSize * (sampleRate / 48000.0));
+        setLatencySamples (latency);
     }
 
     void releaseResources() override {}
@@ -74,8 +97,12 @@ public:
         const int numSamples  = buffer.getNumSamples();
         if (numChannels == 0 || numSamples == 0) return;
 
-        float amountNorm = juce::jlimit (0.0f, 1.0f, amountParam.get (100.0f) * 0.01f);
-        float vadThresh  = juce::jlimit (0.0f, 1.0f, vadParam.get (30.0f) * 0.01f);
+        const int activeChannels = juce::jmin (numChannels, 2);
+        const float targetAmount = juce::jlimit (0.0f, 1.0f, amountParam.get (100.0f) * 0.01f);
+        smoothedAmount.setTargetValue (targetAmount);
+
+        const float vadThresh = juce::jlimit (0.0f, 1.0f, vadParam.get (0.0f) * 0.01f);
+        const float vadSmoothCoeff = std::exp (-1.0f / (float) (0.025f * sampleRate)); // 25ms smooth ramp
 
         float blockDryPeak = 0.0f;
         float blockCleanPeak = 0.0f;
@@ -83,85 +110,108 @@ public:
 
         for (int i = 0; i < numSamples; ++i)
         {
-            // 1. Push incoming dry sample into inRing
-            for (int ch = 0; ch < numChannels; ++ch)
+            float amountNorm = smoothedAmount.getNextValue();
+
+            // 1. Push incoming dry samples into inRing
+            for (int ch = 0; ch < activeChannels; ++ch)
             {
-                int chIdx = ch < 2 ? ch : 0;
                 float dry = buffer.getSample (ch, i);
-                inRing[chIdx][inWritePos] = dry;
+                inRing[ch][inWritePos] = dry;
                 blockDryPeak = juce::jmax (blockDryPeak, std::abs (dry));
             }
 
             samplesInFrame++;
 
-            // 2. When a complete 480-sample frame is accumulated, process through RNNoise
+            // 2. Process RNNoise recurrent network on 480-sample frame completion
             if (samplesInFrame >= frameSize)
             {
                 samplesInFrame = 0;
                 float frameIn[frameSize];
                 float frameOut[frameSize];
 
-                for (int ch = 0; ch < numChannels; ++ch)
+                for (int ch = 0; ch < activeChannels; ++ch)
                 {
-                    int chIdx = ch < 2 ? ch : 0;
-                    if (denoiseStates[chIdx] == nullptr) continue;
+                    if (denoiseStates[ch] == nullptr) continue;
 
-                    // Extract 480 samples in order from inRing
+                    // Extract previous 480 samples in order from inRing
                     int readStart = (inWritePos - frameSize + 1 + ringCapacity) % ringCapacity;
                     for (int s = 0; s < frameSize; ++s)
                     {
                         int idx = (readStart + s) % ringCapacity;
-                        frameIn[s] = inRing[chIdx][idx] * 32767.0f;
+                        frameIn[s] = inRing[ch][idx] * 32767.0f;
                     }
 
                     // Process through RNNoise recurrent neural network
-                    float vad = rnnoise_process_frame (denoiseStates[chIdx], frameOut, frameIn);
+                    float vad = rnnoise_process_frame (denoiseStates[ch], frameOut, frameIn);
                     if (ch == 0) latestVad = vad;
 
-                    // Write denoised frame into outRing with 16-bit scale normalized
+                    // Write normalized denoised frame into outRing
                     for (int s = 0; s < frameSize; ++s)
                     {
                         int oIdx = (outWritePos + s) % ringCapacity;
-                        outRing[chIdx][oIdx] = frameOut[s] * (1.0f / 32767.0f);
+                        outRing[ch][oIdx] = frameOut[s] * (1.0f / 32767.0f);
                     }
                 }
 
                 outWritePos = (outWritePos + frameSize) % ringCapacity;
 
-                // Update VAD target with gentle speech threshold
-                if (latestVad >= vadThresh)
-                    targetVadGain = 1.0f;
+                // 3. Optional VAD secondary gate (only active when vadSensitivity > 0)
+                if (vadThresh <= 0.001f)
+                {
+                    targetVadGain = 1.0f; // 100% natural RNNoise, zero gating/ducking
+                }
                 else
-                    targetVadGain = juce::jmax (0.20f, latestVad / juce::jmax (0.01f, vadThresh));
+                {
+                    if (latestVad >= vadThresh)
+                        targetVadGain = 1.0f;
+                    else
+                        targetVadGain = juce::jlimit (0.25f, 1.0f, latestVad / vadThresh);
+                }
             }
 
-            // 3. Smooth VAD gain per sample (20ms exponential analog ramp - completely prevents clicks!)
-            currentVadGain = currentVadGain * 0.9985f + targetVadGain * 0.0015f;
+            // Smooth VAD gain with sample-rate aware ballistics
+            currentVadGain = vadSmoothCoeff * currentVadGain + (1.0f - vadSmoothCoeff) * targetVadGain;
 
-            // 4. Output time-aligned processed audio with phase-coherent wet/dry blend
-            for (int ch = 0; ch < numChannels; ++ch)
+            // 4. Output with Phase-Coherent Wet/Dry Blend:
+            // Crucial fix: dry signal must be delayed by EXACTLY frameSize samples (480)
+            // to align precisely with RNNoise's frame processing delay.
+            // Eliminates comb filtering / flanging completely!
+            int delayedDryPos = (inWritePos - frameSize + ringCapacity) % ringCapacity;
+
+            for (int ch = 0; ch < activeChannels; ++ch)
             {
-                int chIdx = ch < 2 ? ch : 0;
-                float delayedDry = inRing[chIdx][outReadPos];
-                float clean = outRing[chIdx][outReadPos] * currentVadGain;
+                float delayedDry = inRing[ch][delayedDryPos];
+                float clean = outRing[ch][outReadPos] * currentVadGain;
 
                 float out = (1.0f - amountNorm) * delayedDry + amountNorm * clean;
                 buffer.setSample (ch, i, out);
                 blockCleanPeak = juce::jmax (blockCleanPeak, std::abs (out));
             }
 
+            // Pass through any extra channels (ch >= 2) untouched
+            for (int ch = activeChannels; ch < numChannels; ++ch)
+            {
+                // Leave buffer[ch][i] as-is
+            }
+
             // Advance positions synchronously
             inWritePos = (inWritePos + 1) % ringCapacity;
             outReadPos = (outReadPos + 1) % ringCapacity;
 
-            // Capture visualizer history
+            // Capture visualizer history at ~40Hz
             samplesSincePush++;
             if (samplesSincePush >= (int) (sampleRate / 40.0))
             {
                 samplesSincePush = 0;
                 int idx = historyWriteIndex.load (std::memory_order_relaxed);
-                history[idx] = { blockDryPeak, blockCleanPeak, latestVad };
+                history[idx].dryLevel.store (blockDryPeak, std::memory_order_relaxed);
+                history[idx].cleanLevel.store (blockCleanPeak, std::memory_order_relaxed);
+                history[idx].vadProb.store (latestVad, std::memory_order_relaxed);
                 historyWriteIndex.store ((idx + 1) % historySize, std::memory_order_relaxed);
+
+                // Reset block peaks so each slice accurately represents its 25ms window!
+                blockDryPeak = 0.0f;
+                blockCleanPeak = 0.0f;
             }
         }
 
@@ -181,7 +231,12 @@ public:
         dest.resize (historySize);
         int head = historyWriteIndex.load (std::memory_order_relaxed);
         for (int i = 0; i < historySize; ++i)
-            dest[i] = history[(head + i) % historySize];
+        {
+            int idx = (head + i) % historySize;
+            dest[i].dryLevel   = history[idx].dryLevel.load (std::memory_order_relaxed);
+            dest[i].cleanLevel = history[idx].cleanLevel.load (std::memory_order_relaxed);
+            dest[i].vadProb    = history[idx].vadProb.load (std::memory_order_relaxed);
+        }
     }
 
 private:
@@ -195,19 +250,33 @@ private:
 
             std::make_unique<juce::AudioParameterFloat> (
                 juce::ParameterID { "vadSensitivity", 1 }, "VAD Threshold",
-                juce::NormalisableRange<float> (0.0f, 100.0f, 1.0f), 30.0f,
+                juce::NormalisableRange<float> (0.0f, 100.0f, 1.0f), 0.0f,
                 juce::AudioParameterFloatAttributes().withLabel ("%"))
         };
     }
+
+    struct MonitorPointAtomic
+    {
+        std::atomic<float> dryLevel { 0.0f };
+        std::atomic<float> cleanLevel { 0.0f };
+        std::atomic<float> vadProb { 0.0f };
+    };
 
     ParamRef amountParam;
     ParamRef vadParam;
 
     double sampleRate = 48000.0;
+    bool isNative48k = true;
     DenoiseState* denoiseStates[2] = { nullptr, nullptr };
+
+    juce::CatmullRomInterpolator resamplerIn[2];
+    juce::CatmullRomInterpolator resamplerOut[2];
 
     std::vector<float> inRing[2];
     std::vector<float> outRing[2];
+    std::vector<float> resamp48kIn[2];
+    std::vector<float> resamp48kOut[2];
+
     int inWritePos = 0;
     int outWritePos = frameSize;
     int outReadPos = 0;
@@ -216,11 +285,13 @@ private:
     float currentVadGain = 1.0f;
     float targetVadGain = 1.0f;
 
+    juce::SmoothedValue<float> smoothedAmount;
+
     std::atomic<float> liveVadProb { 0.0f };
     std::atomic<float> liveDryLevel { 0.0f };
     std::atomic<float> liveCleanLevel { 0.0f };
 
-    MonitorPoint history[historySize];
+    MonitorPointAtomic history[historySize];
     std::atomic<int> historyWriteIndex { 0 };
     int samplesSincePush = 0;
 };
