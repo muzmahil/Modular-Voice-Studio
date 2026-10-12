@@ -44,19 +44,24 @@ PrivilegesRequiredOverridesAllowed=dialog
 CloseApplications=yes
 RestartIfNeededByRun=no
 
+AlwaysShowComponentsList=yes
+
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Types]
+
 Name: "full"; Description: "Full Installation (Standalone + VST3 + VST2)"
+Name: "custom"; Description: "Custom Installation (Choose individual components)"; Flags: iscustom
 Name: "standaloneonly"; Description: "Standalone Application Only"
 Name: "pluginsonly"; Description: "Audio Plugins Only (VST3 + VST2 for DAWs)"
-Name: "custom"; Description: "Custom Installation"; Flags: iscustom
 
 [Components]
-Name: "Standalone"; Description: "Modular Voice Studio Standalone Application (Desktop GUI & ASIO/WASAPI Audio Engine)"; Types: full standaloneonly custom
-Name: "VST3"; Description: "Modular Voice Studio VST3 Audio Effect (Recommended for modern DAWs: FL Studio, Ableton, Reaper, Cubase, etc.)"; Types: full pluginsonly custom
-Name: "VST2"; Description: "Modular Voice Studio VST2 Audio Effect (64-bit DLL for legacy DAW compatibility)"; Types: full pluginsonly custom
+Name: "Standalone"; Description: "Modular Voice Studio Standalone Application (Desktop GUI & Audio Engine)"; Types: full standaloneonly
+Name: "VST3"; Description: "Modular Voice Studio VST3 Audio Effect (Recommended for modern DAWs: FL Studio, Ableton, Reaper, Cubase, etc.)"; Types: full pluginsonly
+Name: "VST2"; Description: "Modular Voice Studio VST2 Audio Effect (64-bit DLL for legacy DAW compatibility)"; Types: full pluginsonly
+
+
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Components: Standalone
