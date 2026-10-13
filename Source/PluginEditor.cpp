@@ -1,6 +1,7 @@
 #include "PluginEditor.h"
 #include "./Graph/ModuleFactory.h"
 #include "Localization.h"
+#include "BuildVersion.h"
 #include <BinaryData.h>
 
 PluginEditor::PluginEditor (PluginProcessor& p)
@@ -771,12 +772,14 @@ void PluginEditor::paint (juce::Graphics& g)
         }
 
         std::vector<TelemetryBadge> badges = {
-            { tr ("CPU_LABEL"),   juce::String (cpu, 1) + " %", cpuCol, true, cpuCol, 96.0f },
-            { tr ("RESP_LABEL"),  procStr,                      procCol, false, {},   102.0f },
-            { tr ("SR_LABEL"),    srStr,                        UITheme::appleBlue, false, {}, 95.0f },
+            { "BUILD",            MVS_BUILD_CODE,               UITheme::appleBlue,   false, {}, 120.0f },
+            { tr ("CPU_LABEL"),   juce::String (cpu, 1) + " %", cpuCol,               true,  cpuCol, 96.0f },
+            { tr ("RESP_LABEL"),  procStr,                      procCol,              false, {}, 102.0f },
+            { tr ("SR_LABEL"),    srStr,                        UITheme::appleBlue,   false, {}, 95.0f },
             { tr ("BUF_LABEL"),   bufStr,                       UITheme::textPrimary, false, {}, 122.0f },
             { "NODES", juce::String (activeNodes) + " " + tr ("ACTIVE"), UITheme::textSecondary, false, {}, 95.0f }
         };
+
 
         float curRight = (float) getWidth() - 16.0f;
         float badgeY = bpb.getY() + 6.0f;

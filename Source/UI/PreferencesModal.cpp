@@ -4,6 +4,7 @@
 #include "../PluginProcessor.h"
 #include "../UITheme.h"
 #include "../Localization.h"
+#include "../BuildVersion.h"
 #include <BinaryData.h>
 
 #if JucePlugin_Build_Standalone
@@ -564,7 +565,8 @@ void PreferencesModal::drawAboutTab (juce::Graphics& g, juce::Rectangle<int> are
 
     g.setColour (UITheme::appleBlue);
     g.setFont (UITheme::getFont (11.0f, true));
-    g.drawText (juce::String::fromUTF8 ("VERSION 1.5.0 \xe2\x80\xa2 PROFESSIONAL DSP EDITION"), juce::Rectangle<float> (b.getX(), logoRect.getBottom() + 30.0f, b.getWidth(), 16.0f), juce::Justification::centred);
+    g.drawText (juce::String ("VERSION ") + MVS_VERSION_STRING + juce::String::fromUTF8 (" \xe2\x80\xa2 ") + MVS_BUILD_CODE, 
+                juce::Rectangle<float> (b.getX(), logoRect.getBottom() + 30.0f, b.getWidth(), 16.0f), juce::Justification::centred);
 
     // 3. Author / Lead Engineer Badge
     auto authorRect = juce::Rectangle<float> (b.getCentreX() - 175.0f, logoRect.getBottom() + 50.0f, 350.0f, 28.0f);
@@ -582,7 +584,8 @@ void PreferencesModal::drawAboutTab (juce::Graphics& g, juce::Rectangle<int> are
     g.drawText (juce::String::fromUTF8 ("Furkan \"rootcf\" \xc3\x87" "entek"), authorRect.withTrimmedLeft (8.0f), juce::Justification::centredLeft);
 
     // 4. Feature Badges (Pills)
-    juce::StringArray badges = { "64-BIT VST3 / STANDALONE", "VECTOR DIRECTWRITE", "SIMD DSP ENGINE", ".MVS PATCH SYSTEM" };
+    juce::StringArray badges = { "64-BIT VST3 / VST2", "BUILD " MVS_BUILD_CODE, "SIMD DSP ENGINE", ".MVS PATCH SYSTEM" };
+
     float badgeW = 126.0f;
     float totalBadgesW = badges.size() * badgeW + (badges.size() - 1) * 6.0f;
     float startX = b.getCentreX() - (totalBadgesW * 0.5f);
