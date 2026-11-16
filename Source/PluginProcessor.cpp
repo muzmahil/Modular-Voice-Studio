@@ -462,6 +462,7 @@ PluginProcessor::PluginProcessor()
     for (int i = 0; i < 4; ++i)
     {
         channels[i] = std::make_unique<ChannelDSPProcessor> (i);
+        channels[i]->addChangeListener (this);
     }
     for (int i = 0; i < 3; ++i)
     {
@@ -476,7 +477,20 @@ PluginProcessor::PluginProcessor()
     outputWaveform.resize (waveformHistorySize, 0.0f);
 }
 
-PluginProcessor::~PluginProcessor() = default;
+PluginProcessor::~PluginProcessor()
+{
+    for (int i = 0; i < 4; ++i)
+    {
+        if (channels[i] != nullptr)
+            channels[i]->removeChangeListener (this);
+    }
+}
+
+void PluginProcessor::changeListenerCallback (juce::ChangeBroadcaster* source)
+{
+    juce::ignoreUnused (source);
+    sendChangeMessage();
+}
 
 void PluginProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {

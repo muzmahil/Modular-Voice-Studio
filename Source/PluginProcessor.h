@@ -83,7 +83,8 @@ private:
 };
 
 class PluginProcessor : public juce::AudioProcessor,
-                         public juce::ChangeBroadcaster // notifies the editor when the graph topology changes
+                         public juce::ChangeBroadcaster, // notifies the editor when the graph topology changes
+                         public juce::ChangeListener
 {
 public:
     using Node = juce::AudioProcessorGraph::Node;
@@ -92,6 +93,8 @@ public:
 
     PluginProcessor();
     ~PluginProcessor() override;
+
+    void changeListenerCallback (juce::ChangeBroadcaster* source) override;
 
     ChannelDSPProcessor& getChannel (int index) { return *channels[juce::jlimit (0, 3, index)]; }
     const ChannelDSPProcessor& getChannel (int index) const { return *channels[juce::jlimit (0, 3, index)]; }
@@ -122,12 +125,39 @@ public:
     }
 
     // Direct forwarding to active channel for canvas/sidebar UI
-    Node::Ptr addModule (const juce::String& typeId, juce::Point<int> canvasPosition) { return getActiveChannel().addModule (typeId, canvasPosition); }
-    void removeModule (NodeID id) { getActiveChannel().removeModule (id); }
-    void removeModuleAndReconnect (NodeID id) { getActiveChannel().removeModuleAndReconnect (id); }
-    bool connect (NodeID srcNode, int srcCh, NodeID dstNode, int dstCh) { return getActiveChannel().connect (srcNode, srcCh, dstNode, dstCh); }
-    void disconnect (const Connection& c) { getActiveChannel().disconnect (c); }
-    void clearGraphToDefault() { getActiveChannel().clearGraphToDefault(); }
+    Node::Ptr addModule (const juce::String& typeId, juce::Point<int> canvasPosition)
+    {
+        auto node = getActiveChannel().addModule (typeId, canvasPosition);
+        sendSynchronousChangeMessage();
+        return node;
+    }
+    void removeModule (NodeID id)
+    {
+        getActiveChannel().removeModule (id);
+        sendSynchronousChangeMessage();
+    }
+    void removeModuleAndReconnect (NodeID id)
+    {
+        getActiveChannel().removeModuleAndReconnect (id);
+        sendSynchronousChangeMessage();
+    }
+    bool connect (NodeID srcNode, int srcCh, NodeID dstNode, int dstCh)
+    {
+        bool ok = getActiveChannel().connect (srcNode, srcCh, dstNode, dstCh);
+        if (ok)
+            sendSynchronousChangeMessage();
+        return ok;
+    }
+    void disconnect (const Connection& c)
+    {
+        getActiveChannel().disconnect (c);
+        sendSynchronousChangeMessage();
+    }
+    void clearGraphToDefault()
+    {
+        getActiveChannel().clearGraphToDefault();
+        sendSynchronousChangeMessage();
+    }
     void resetAllToFactoryDefaults();
 
     juce::AudioProcessorGraph& getGraph() { return getActiveChannel().getGraph(); }
